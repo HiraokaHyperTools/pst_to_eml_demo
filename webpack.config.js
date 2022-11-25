@@ -42,7 +42,7 @@ const baseConfig = {
       "process": require.resolve("./polyfill/process.js"),
       "path": require.resolve("path-browserify"),
       "os": require.resolve("./polyfill/os.js"),
-      "zlib": require.resolve("browserify-zlib"),
+      "zlib": require.resolve("browserify-zlib"), // still used by nodemailer
 
       "http": false,
       "https": false,

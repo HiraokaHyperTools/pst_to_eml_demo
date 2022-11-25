@@ -14,20 +14,21 @@
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
   integrity sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==
 
-"@hiraokahypertools/pst-extractor@^0.1.0-alpha.4":
-  version "0.1.0-alpha.4"
-  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst-extractor/-/pst-extractor-0.1.0-alpha.4.tgz#aef02384f6004596358ffedcf8caa581f73ae932"
-  integrity sha512-gxcXJBXMtHqxgVIiL4M443KQpE6AXWYr58fL/YV4E6bs/0xChFwpxiqcQASuV1iOSbAtMpC/iZ53nRLgca2FVw==
+"@hiraokahypertools/pst-extractor@^0.1.0-alpha.5":
+  version "0.1.0-alpha.5"
+  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst-extractor/-/pst-extractor-0.1.0-alpha.5.tgz#0fbd6d089c268b757fc0c7b5a044fa4e8b7888b8"
+  integrity sha512-XuSMtHH5DnTqQb1pCZTAR/icIlDSn5Nrazkx2cFomFcsY0N/YyAvqpMgfbkdkjiqGscMX3FYNu6cx3FtXxgQDQ==
   dependencies:
     iconv-lite "^0.6.3"
     long "^5.2.0"
+    pako "^2.1.0"
 
-"@hiraokahypertools/pst_to_eml@^0.1.0-alpha.5":
-  version "0.1.0-alpha.5"
-  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst_to_eml/-/pst_to_eml-0.1.0-alpha.5.tgz#8fde7963c332de6532032d8bdcfc7dcae91b01bb"
-  integrity sha512-eb6pP1MuMg1uHS92DLGhcvihrRs3Jwlpkyw5MXKMxDgMDEjlqfyTDyJ0YG1CJo196UmIeDgWfLOCbMZA1dyAew==
+"@hiraokahypertools/pst_to_eml@^0.1.0-alpha.6":
+  version "0.1.0-alpha.6"
+  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst_to_eml/-/pst_to_eml-0.1.0-alpha.6.tgz#d05c05310dd7eafe21285de61240e99d29d2a8d0"
+  integrity sha512-U8SBq7AMFNc9Qncr+vnspBRWrFi21JXQBzTI1Qnl03Y5olNjA7DyhRwpvELbmdtkoyeLqmAM711C9Z+cVH7AFQ==
   dependencies:
-    "@hiraokahypertools/pst-extractor" "^0.1.0-alpha.4"
+    "@hiraokahypertools/pst-extractor" "^0.1.0-alpha.5"
     commander "^9.4.0"
     nodemailer "^6.7.7"
     pst-extractor "^1.9.0"
@@ -2066,6 +2067,11 @@ p-try@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/p-try/-/p-try-2.2.0.tgz#cb2868540e313d61de58fafbe35ce9004d5540e6"
   integrity sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==
+
+pako@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pako/-/pako-2.1.0.tgz#266cc37f98c7d883545d11335c00fbd4062c9a86"
+  integrity sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==
 
 pako@~1.0.5:
   version "1.0.11"
