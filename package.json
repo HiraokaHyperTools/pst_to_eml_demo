@@ -1,0 +1,58 @@
+{
+  "name": "pst_to_eml_demo",
+  "version": "0.1.0",
+  "files": [
+    "dist"
+  ],
+  "author": "kenjiuno",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@hiraokahypertools/pst-extractor": "^0.1.0-alpha.4",
+    "@hiraokahypertools/pst_to_eml": "^0.1.0-alpha.5",
+    "@kenjiuno/decompressrtf": "^0.1.4",
+    "@kenjiuno/msgreader": "^1.15.0-alpha.1",
+    "@types/react-dom": "^17",
+    "@types/react-router-dom": "^5",
+    "assert": "^2.0.0",
+    "bootstrap": "^5.1.3",
+    "browserify-zlib": "^0.2.0",
+    "iconv-lite": "^0.6.3",
+    "react": "^17.0.2",
+    "react-bootstrap": "^2.4.0",
+    "react-dom": "^17.0.2",
+    "react-router-dom": "^5",
+    "rtf-stream-parser": "^3.5.1",
+    "rxjs": "^7.5.6",
+    "string_decoder": "^1.3.0",
+    "url": "^0.11.0"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && webpack --mode production && node deploy",
+    "watch": "webpack watch --mode development",
+    "serve": "webpack serve --mode development"
+  },
+  "engines": {
+    "node": ">= 14"
+  },
+  "devDependencies": {
+    "@types/react": "^17",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
+    "css-loader": "^6.7.1",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "rimraf": "^3.0.2",
+    "stream-browserify": "^3.0.0",
+    "style-loader": "^3.3.1",
+    "terser-webpack-plugin": "^5.3.3",
+    "thunderbird-web-ext-types": "^1.0.0",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "webpack": "^5.73.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.9.3"
+  }
+}

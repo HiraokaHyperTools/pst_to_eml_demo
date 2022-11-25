@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "declaration": false,
+    "module": "ES2022",
+    "moduleResolution": "Node",
+    "strict": true,
+    "target": "ES2022",
+    "outDir": "dist",
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/thunderbird-web-ext-types",
+      "src/webext"
+    ],
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/demo.tsx"
+  ]
+}
