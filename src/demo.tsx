@@ -140,13 +140,37 @@ function PSTApp() {
     }
     foldersSubject.next(folderItemIsLoading);
     try {
+      const diskCache = new Map<number, ArrayBuffer>();
+      const cacheUnit = 1024 * 1024;
       const pst = await openPst({
         readFile: async (buffer: ArrayBuffer, offset: number, length: number, position: number) => {
           diskAccessSubject.next(`reading block at ${bytePositionFormatter.format(position)}`);
-          const blockBlob = file.slice(position, position + length);
-          const source = await blockBlob.arrayBuffer();
-          new Uint8Array(buffer).set(new Uint8Array(source), offset);
-          return blockBlob.size;
+          const totalLen = length;
+          const dest = new Uint8Array(buffer);
+
+          while (1 <= length) {
+            const cacheIdx = Math.floor(position / cacheUnit);
+            const basePosition = cacheUnit * (cacheIdx);
+            const boundaryPosition = cacheUnit * (cacheIdx + 1);
+            let cache = diskCache.get(cacheIdx);
+            if (cache === undefined) {
+              diskCache.set(
+                cacheIdx,
+                cache = (await file.slice(basePosition, boundaryPosition).arrayBuffer())
+              );
+              console.info(`cache ${cacheIdx}`);
+            }
+            const chunkSize = Math.min(length, boundaryPosition - position);
+
+            const source = cache.slice(position % cacheUnit, (position % cacheUnit) + chunkSize);
+            dest.set(new Uint8Array(source), offset);
+
+            offset += chunkSize;
+            length -= chunkSize;
+            position += chunkSize;
+          }
+
+          return totalLen;
         },
         close: async () => {
           fileSubject.next(null);
