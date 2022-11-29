@@ -14,21 +14,21 @@
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
   integrity sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==
 
-"@hiraokahypertools/pst-extractor@^0.1.0-alpha.5":
-  version "0.1.0-alpha.5"
-  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst-extractor/-/pst-extractor-0.1.0-alpha.5.tgz#0fbd6d089c268b757fc0c7b5a044fa4e8b7888b8"
-  integrity sha512-XuSMtHH5DnTqQb1pCZTAR/icIlDSn5Nrazkx2cFomFcsY0N/YyAvqpMgfbkdkjiqGscMX3FYNu6cx3FtXxgQDQ==
+"@hiraokahypertools/pst-extractor@^0.1.0-alpha.7":
+  version "0.1.0-alpha.7"
+  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst-extractor/-/pst-extractor-0.1.0-alpha.7.tgz#0a9cc6035691fab2b349ed28960ac9b008eb1e13"
+  integrity sha512-WBNfsIFCO3LuMS2WguXTOKkXSSmNtGccp0Fm4lkVQeI7uoC1xHvvAfE8nHj22KtDKpH2d3sEdO8CpLmEysHQPw==
   dependencies:
     iconv-lite "^0.6.3"
     long "^5.2.0"
     pako "^2.1.0"
 
-"@hiraokahypertools/pst_to_eml@^0.1.0-alpha.6":
-  version "0.1.0-alpha.6"
-  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst_to_eml/-/pst_to_eml-0.1.0-alpha.6.tgz#d05c05310dd7eafe21285de61240e99d29d2a8d0"
-  integrity sha512-U8SBq7AMFNc9Qncr+vnspBRWrFi21JXQBzTI1Qnl03Y5olNjA7DyhRwpvELbmdtkoyeLqmAM711C9Z+cVH7AFQ==
+"@hiraokahypertools/pst_to_eml@^0.1.0-alpha.7":
+  version "0.1.0-alpha.7"
+  resolved "https://registry.yarnpkg.com/@hiraokahypertools/pst_to_eml/-/pst_to_eml-0.1.0-alpha.7.tgz#58a7b35a2a42536bed78f35b0e7de5280bae664f"
+  integrity sha512-0N7oxsPypTos6o9Co3toPb78bjTPolXVqK6XtMcGOuqyNKN45ohxPg7WcLKcPS1KDnvYFTIQBSW7Y10wwXIl2w==
   dependencies:
-    "@hiraokahypertools/pst-extractor" "^0.1.0-alpha.5"
+    "@hiraokahypertools/pst-extractor" "^0.1.0-alpha.7"
     commander "^9.4.0"
     nodemailer "^6.7.7"
     pst-extractor "^1.9.0"

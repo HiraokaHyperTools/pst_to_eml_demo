@@ -1,7838 +1,6 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 304:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getBTHeapReaderFrom = void 0;
-function getBTHeapReaderFrom(heap, hnid) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const header = yield heap.getHeapBuffers(hnid);
-        if (header.length !== 1) {
-            throw new Error(`btree heap buffer must be single`);
-        }
-        const headerView = new DataView(header[0]);
-        const bTypeBTH = 0xB5;
-        if (headerView.getUint8(0) !== bTypeBTH) {
-            throw new Error(`signature must be bTypeBTH`);
-        }
-        const cbKey = headerView.getUint8(1);
-        const cbEnt = headerView.getUint8(2);
-        const bIdxLevels = headerView.getUint8(3);
-        const hidRoot = headerView.getUint32(4, true);
-        const list = [];
-        function recursive(hid, level) {
-            return __awaiter(this, void 0, void 0, function* () {
-                if (hid !== 0) {
-                    if (level === 0) {
-                        const recordSize = cbKey + cbEnt;
-                        const records = (yield heap.getHeapBuffers(hid));
-                        if (records.length !== 1) {
-                            throw new Error(`btree heap record must be single`);
-                        }
-                        const record = records[0];
-                        const numRecords = Math.floor(record.byteLength / recordSize);
-                        for (let x = 0; x < numRecords; x++) {
-                            const top = recordSize * x;
-                            list.push({
-                                key: record.slice(top, top + cbKey),
-                                data: record.slice(top + cbKey, top + recordSize),
-                            });
-                        }
-                    }
-                    else {
-                        const recordSize = cbKey + 4;
-                        const records = (yield heap.getHeapBuffers(hid));
-                        if (records.length !== 1) {
-                            throw new Error(`btree intermediate record must be single`);
-                        }
-                        const record = records[0];
-                        const recordView = new DataView(record);
-                        const numRecords = Math.floor(record.byteLength / recordSize);
-                        for (let x = 0; x < numRecords; x++) {
-                            const top = recordSize * x;
-                            const hidInner = recordView.getUint32(top + cbKey, true);
-                            yield recursive(hidInner, level - 1);
-                        }
-                    }
-                }
-            });
-        }
-        yield recursive(hidRoot, bIdxLevels);
-        return {
-            list() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    return list;
-                });
-            },
-        };
-    });
-}
-exports.getBTHeapReaderFrom = getBTHeapReaderFrom;
-
-
-/***/ }),
-
-/***/ 7683:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CollectionAsyncProvider = void 0;
-const KeyedDelay_1 = __webpack_require__(7113);
-/**
- * @internal
- */
-class CollectionAsyncProvider {
-    constructor(count, itemProvider) {
-        this._cache = new KeyedDelay_1.KeyedDelay();
-        this._count = count;
-        this._itemProvider = itemProvider;
-    }
-    get count() {
-        return this._count;
-    }
-    get(index) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield this._cache.getOrCreate(index.toString(), () => __awaiter(this, void 0, void 0, function* () { return yield this._itemProvider(index); }));
-        });
-    }
-    /**
-     * get all of the children
-     */
-    all() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const array = [];
-            for (let x = 0; x < this._count; x++) {
-                array.push(yield this.get(x));
-            }
-            return array;
-        });
-    }
-}
-exports.CollectionAsyncProvider = CollectionAsyncProvider;
-
-
-/***/ }),
-
-/***/ 7113:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.KeyedDelay = void 0;
-/**
- * @internal
- */
-class KeyedDelay {
-    constructor() {
-        this._map = new Map();
-    }
-    getOrCreate(key, provider) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this._map.has(key)) {
-                const value = this._map.get(key);
-                if (value === undefined) {
-                    throw new Error("provider must provide a non-undefined value");
-                }
-                return value;
-            }
-            else {
-                const value = yield provider();
-                this._map.set(key, value);
-                return value;
-            }
-        });
-    }
-}
-exports.KeyedDelay = KeyedDelay;
-
-
-/***/ }),
-
-/***/ 8425:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LZFu = void 0;
-const PSTUtil_class_1 = __webpack_require__(8391);
-// An implementation of the LZFu algorithm to decompress RTF content
-class LZFu {
-    /**
-     * Decompress the buffer of RTF content using LZ
-     * @static
-     * @param {Buffer} data
-     * @returns {string}
-     * @memberof LZFu
-     */
-    static decode(data) {
-        // const compressedSize: number = PSTUtil.convertLittleEndianBytesToLong(
-        //   data,
-        //   0,
-        //   4
-        // ).toNumber()
-        const uncompressedSize = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 4, 8).toNumber();
-        const compressionSig = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 8, 12).toNumber();
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const compressedCRC = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 12, 16).toNumber();
-        if (compressionSig == 0x75465a4c) {
-            // we are compressed...
-            const output = Buffer.alloc(uncompressedSize);
-            let outputPosition = 0;
-            const lzBuffer = Buffer.alloc(4096);
-            // preload our buffer.
-            try {
-                const bytes = Buffer.from(LZFu.LZFU_HEADER); //getBytes("US-ASCII");
-                PSTUtil_class_1.PSTUtil.arraycopy(bytes, 0, lzBuffer, 0, LZFu.LZFU_HEADER.length);
-            }
-            catch (err) {
-                console.error('LZFu::decode cant preload buffer\n' + err);
-                throw err;
-            }
-            let bufferPosition = LZFu.LZFU_HEADER.length;
-            let currentDataPosition = 16;
-            // next byte is the flags,
-            while (currentDataPosition < data.length - 2 &&
-                outputPosition < output.length) {
-                let flags = data[currentDataPosition++] & 0xff;
-                for (let x = 0; x < 8 && outputPosition < output.length; x++) {
-                    const isRef = (flags & 1) == 1;
-                    flags >>= 1;
-                    if (isRef) {
-                        // get the starting point for the buffer and the length to read
-                        const refOffsetOrig = data[currentDataPosition++] & 0xff;
-                        const refSizeOrig = data[currentDataPosition++] & 0xff;
-                        const refOffset = (refOffsetOrig << 4) | (refSizeOrig >>> 4);
-                        const refSize = (refSizeOrig & 0xf) + 2;
-                        try {
-                            // copy the data from the buffer
-                            let index = refOffset;
-                            for (let y = 0; y < refSize && outputPosition < output.length; y++) {
-                                output[outputPosition++] = lzBuffer[index];
-                                lzBuffer[bufferPosition] = lzBuffer[index];
-                                bufferPosition++;
-                                bufferPosition %= 4096;
-                                ++index;
-                                index %= 4096;
-                            }
-                        }
-                        catch (err) {
-                            console.error('LZFu::decode copy the data from the buffer\n' + err);
-                            throw err;
-                        }
-                    }
-                    else {
-                        // copy the byte over
-                        lzBuffer[bufferPosition] = data[currentDataPosition];
-                        bufferPosition++;
-                        bufferPosition %= 4096;
-                        output[outputPosition++] = data[currentDataPosition++];
-                    }
-                }
-            }
-            if (outputPosition != uncompressedSize) {
-                throw new Error('LZFu::constructor decode Error decompressing RTF');
-            }
-            return new String(output).trim();
-        }
-        else if (compressionSig == 0x414c454d) {
-            // we are not compressed!
-            // just return the rest of the contents as a string
-            const output = Buffer.alloc(data.length - 16);
-            PSTUtil_class_1.PSTUtil.arraycopy(data, 16, output, 0, data.length - 16);
-            return new String(output).trim();
-        }
-        return '';
-    }
-}
-exports.LZFu = LZFu;
-LZFu.LZFU_HEADER = '{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\r\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx';
-
-
-/***/ }),
-
-/***/ 7420:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.NodeMap = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const long_1 = __importDefault(__webpack_require__(1583));
-/**
- * Stores node names (both alpha and numeric) in node maps for quick lookup.
- * @export
- * @class NodeMap
- */
-class NodeMap {
-    constructor() {
-        this.nameToId = new Map();
-        this.idToNumericName = new Map();
-        this.idToStringName = new Map();
-    }
-    /**
-     * Set a node into the map.
-     * @param {*} key
-     * @param {number} propId
-     * @param {number} [idx]
-     * @memberof NodeMap
-     */
-    setId(key, propId, idx) {
-        if (typeof key === 'number' && idx !== undefined) {
-            const lkey = this.transformKey(key, idx);
-            this.nameToId.set(lkey.toString(), propId);
-            this.idToNumericName.set(propId, lkey);
-            // console.log('NodeMap::setId: propId = ' + propId + ', lkey = ' + lkey.toString());
-        }
-        else if (typeof key === 'string') {
-            this.nameToId.set(key, propId);
-            this.idToStringName.set(propId, key);
-            // console.log('NodeMap::setId: propId = ' + propId + ', key = ' + key);
-        }
-        else {
-            throw new Error('NodeMap::setId bad param type ' + typeof key);
-        }
-    }
-    /**
-     * Get a node from the map.
-     * @param {*} key
-     * @param {number} [idx]
-     * @returns {number}
-     * @memberof NodeMap
-     */
-    getId(key, idx) {
-        let id = undefined;
-        if (typeof key === 'number' && idx) {
-            id = this.nameToId.get(this.transformKey(key, idx).toString());
-        }
-        else if (typeof key === 'string') {
-            id = this.nameToId.get(key);
-        }
-        else {
-            throw new Error('NodeMap::getId bad param type ' + typeof key);
-        }
-        if (!id) {
-            return -1;
-        }
-        return id;
-    }
-    /**
-     * Get a node from the map.
-     * @param {number} propId
-     * @returns {long}
-     * @memberof NodeMap
-     */
-    getNumericName(propId) {
-        const lkey = this.idToNumericName.get(propId);
-        if (!lkey) {
-            // console.log("NodeMap::getNumericName Name to Id mapping not found, propId = " + propId);
-        }
-        return lkey;
-    }
-    transformKey(key, idx) {
-        let lidx = long_1.default.fromNumber(idx);
-        lidx = lidx.shiftLeft(32);
-        lidx = lidx.or(key);
-        return lidx;
-    }
-}
-exports.NodeMap = NodeMap;
-
-
-/***/ }),
-
-/***/ 6725:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.OutlookProperties = void 0;
-/* eslint-disable @typescript-eslint/camelcase */
-// See PSTMessage.class for details on these properties
-var OutlookProperties;
-(function (OutlookProperties) {
-    OutlookProperties[OutlookProperties["PSETID_Common"] = 1] = "PSETID_Common";
-    OutlookProperties[OutlookProperties["PSETID_Address"] = 2] = "PSETID_Address";
-    OutlookProperties[OutlookProperties["PSETID_Appointment"] = 4] = "PSETID_Appointment";
-    OutlookProperties[OutlookProperties["PSETID_Meeting"] = 5] = "PSETID_Meeting";
-    OutlookProperties[OutlookProperties["PSETID_Log"] = 6] = "PSETID_Log";
-    OutlookProperties[OutlookProperties["PR_RTF_COMPRESSED"] = 4105] = "PR_RTF_COMPRESSED";
-    OutlookProperties[OutlookProperties["PR_NON_RECEIPT_NOTIFICATION_REQUESTED"] = 3078] = "PR_NON_RECEIPT_NOTIFICATION_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED"] = 3080] = "PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_RECIPIENT_TYPE"] = 3093] = "PR_RECIPIENT_TYPE";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_CODEPAGE"] = 16381] = "PR_MESSAGE_CODEPAGE";
-    OutlookProperties[OutlookProperties["PR_INTERNET_CPID"] = 16350] = "PR_INTERNET_CPID";
-    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_CRC"] = 4102] = "PR_RTF_SYNC_BODY_CRC";
-    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_COUNT"] = 4103] = "PR_RTF_SYNC_BODY_COUNT";
-    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_TAG"] = 4104] = "PR_RTF_SYNC_BODY_TAG";
-    OutlookProperties[OutlookProperties["PR_RTF_SYNC_PREFIX_COUNT"] = 4112] = "PR_RTF_SYNC_PREFIX_COUNT";
-    OutlookProperties[OutlookProperties["PR_RTF_SYNC_TRAILING_COUNT"] = 4113] = "PR_RTF_SYNC_TRAILING_COUNT";
-    OutlookProperties[OutlookProperties["PR_BODY"] = 4096] = "PR_BODY";
-    OutlookProperties[OutlookProperties["PR_BODY_HTML"] = 4115] = "PR_BODY_HTML";
-    OutlookProperties[OutlookProperties["PR_IMPORTANCE"] = 23] = "PR_IMPORTANCE";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_CLASS"] = 26] = "PR_MESSAGE_CLASS";
-    OutlookProperties[OutlookProperties["PR_SUBJECT"] = 55] = "PR_SUBJECT";
-    OutlookProperties[OutlookProperties["PR_CLIENT_SUBMIT_TIME"] = 57] = "PR_CLIENT_SUBMIT_TIME";
-    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_NAME"] = 64] = "PR_RECEIVED_BY_NAME";
-    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_NAME"] = 66] = "PR_SENT_REPRESENTING_NAME";
-    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_ADDRTYPE"] = 100] = "PR_SENT_REPRESENTING_ADDRTYPE";
-    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_EMAIL_ADDRESS"] = 101] = "PR_SENT_REPRESENTING_EMAIL_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_CONVERSATION_TOPIC"] = 112] = "PR_CONVERSATION_TOPIC";
-    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_ADDRTYPE"] = 117] = "PR_RECEIVED_BY_ADDRTYPE";
-    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_EMAIL_ADDRESS"] = 118] = "PR_RECEIVED_BY_EMAIL_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_TRANSPORT_MESSAGE_HEADERS"] = 125] = "PR_TRANSPORT_MESSAGE_HEADERS";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_FLAGS"] = 3591] = "PR_MESSAGE_FLAGS";
-    OutlookProperties[OutlookProperties["PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED"] = 35] = "PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_PRIORITY"] = 38] = "PR_PRIORITY";
-    OutlookProperties[OutlookProperties["PR_READ_RECEIPT_REQUESTED"] = 41] = "PR_READ_RECEIPT_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_RECIPIENT_REASSIGNMENT_PROHIBITED"] = 43] = "PR_RECIPIENT_REASSIGNMENT_PROHIBITED";
-    OutlookProperties[OutlookProperties["PR_SENSITIVITY"] = 54] = "PR_SENSITIVITY";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_SENSITIVITY"] = 46] = "PR_ORIGINAL_SENSITIVITY";
-    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_SEARCH_KEY"] = 59] = "PR_SENT_REPRESENTING_SEARCH_KEY";
-    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_NAME"] = 68] = "PR_RCVD_REPRESENTING_NAME";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_SUBJECT"] = 73] = "PR_ORIGINAL_SUBJECT";
-    OutlookProperties[OutlookProperties["PR_REPLY_RECIPIENT_NAMES"] = 80] = "PR_REPLY_RECIPIENT_NAMES";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_TO_ME"] = 87] = "PR_MESSAGE_TO_ME";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_CC_ME"] = 88] = "PR_MESSAGE_CC_ME";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_RECIP_ME"] = 89] = "PR_MESSAGE_RECIP_ME";
-    OutlookProperties[OutlookProperties["PR_RESPONSE_REQUESTED"] = 99] = "PR_RESPONSE_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_BCC"] = 114] = "PR_ORIGINAL_DISPLAY_BCC";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_CC"] = 115] = "PR_ORIGINAL_DISPLAY_CC";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_TO"] = 116] = "PR_ORIGINAL_DISPLAY_TO";
-    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_ADDRTYPE"] = 119] = "PR_RCVD_REPRESENTING_ADDRTYPE";
-    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_EMAIL_ADDRESS"] = 120] = "PR_RCVD_REPRESENTING_EMAIL_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_REPLY_REQUESTED"] = 3095] = "PR_REPLY_REQUESTED";
-    OutlookProperties[OutlookProperties["PR_SENDER_ENTRYID"] = 3097] = "PR_SENDER_ENTRYID";
-    OutlookProperties[OutlookProperties["PR_SENDER_NAME"] = 3098] = "PR_SENDER_NAME";
-    OutlookProperties[OutlookProperties["PR_SENDER_ADDRTYPE"] = 3102] = "PR_SENDER_ADDRTYPE";
-    OutlookProperties[OutlookProperties["PR_SENDER_EMAIL_ADDRESS"] = 3103] = "PR_SENDER_EMAIL_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_SIZE"] = 3592] = "PR_MESSAGE_SIZE";
-    OutlookProperties[OutlookProperties["PR_INTERNET_ARTICLE_NUMBER"] = 3619] = "PR_INTERNET_ARTICLE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_PRIMARY_SEND_ACCOUNT"] = 3624] = "PR_PRIMARY_SEND_ACCOUNT";
-    OutlookProperties[OutlookProperties["PR_NEXT_SEND_ACCT"] = 3625] = "PR_NEXT_SEND_ACCT";
-    OutlookProperties[OutlookProperties["PR_OBJECT_TYPE"] = 4094] = "PR_OBJECT_TYPE";
-    OutlookProperties[OutlookProperties["PR_DELETE_AFTER_SUBMIT"] = 3585] = "PR_DELETE_AFTER_SUBMIT";
-    OutlookProperties[OutlookProperties["PR_RESPONSIBILITY"] = 3599] = "PR_RESPONSIBILITY";
-    OutlookProperties[OutlookProperties["PR_RTF_IN_SYNC"] = 3615] = "PR_RTF_IN_SYNC";
-    OutlookProperties[OutlookProperties["PR_DISPLAY_BCC"] = 3586] = "PR_DISPLAY_BCC";
-    OutlookProperties[OutlookProperties["PR_DISPLAY_CC"] = 3587] = "PR_DISPLAY_CC";
-    OutlookProperties[OutlookProperties["PR_DISPLAY_TO"] = 3588] = "PR_DISPLAY_TO";
-    OutlookProperties[OutlookProperties["PR_MESSAGE_DELIVERY_TIME"] = 3590] = "PR_MESSAGE_DELIVERY_TIME";
-    OutlookProperties[OutlookProperties["PR_INTERNET_MESSAGE_ID"] = 4149] = "PR_INTERNET_MESSAGE_ID";
-    OutlookProperties[OutlookProperties["PR_IN_REPLY_TO_ID"] = 4162] = "PR_IN_REPLY_TO_ID";
-    OutlookProperties[OutlookProperties["PR_INTERNET_RETURN_PATH"] = 4166] = "PR_INTERNET_RETURN_PATH";
-    OutlookProperties[OutlookProperties["PR_ICON_INDEX"] = 4224] = "PR_ICON_INDEX";
-    OutlookProperties[OutlookProperties["PR_LAST_VERB_EXECUTED"] = 4225] = "PR_LAST_VERB_EXECUTED";
-    OutlookProperties[OutlookProperties["PR_LAST_VERB_EXECUTION_TIME"] = 4226] = "PR_LAST_VERB_EXECUTION_TIME";
-    OutlookProperties[OutlookProperties["PR_URL_COMP_NAME"] = 4339] = "PR_URL_COMP_NAME";
-    OutlookProperties[OutlookProperties["PR_ATTR_HIDDEN"] = 4340] = "PR_ATTR_HIDDEN";
-    OutlookProperties[OutlookProperties["PR_EMAIL_ADDRESS"] = 12291] = "PR_EMAIL_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_ADDRTYPE"] = 12290] = "PR_ADDRTYPE";
-    OutlookProperties[OutlookProperties["PR_COMMENT"] = 12292] = "PR_COMMENT";
-    OutlookProperties[OutlookProperties["PR_CREATION_TIME"] = 12295] = "PR_CREATION_TIME";
-    OutlookProperties[OutlookProperties["PR_LAST_MODIFICATION_TIME"] = 12296] = "PR_LAST_MODIFICATION_TIME";
-    OutlookProperties[OutlookProperties["PR_ATTACH_DATA_BIN"] = 14081] = "PR_ATTACH_DATA_BIN";
-    OutlookProperties[OutlookProperties["PR_ATTACH_SIZE"] = 3616] = "PR_ATTACH_SIZE";
-    OutlookProperties[OutlookProperties["PR_ATTACH_FILENAME"] = 14084] = "PR_ATTACH_FILENAME";
-    OutlookProperties[OutlookProperties["PR_ATTACH_NUM"] = 3617] = "PR_ATTACH_NUM";
-    OutlookProperties[OutlookProperties["PR_ATTACH_METHOD"] = 14085] = "PR_ATTACH_METHOD";
-    OutlookProperties[OutlookProperties["PR_ATTACH_LONG_FILENAME"] = 14087] = "PR_ATTACH_LONG_FILENAME";
-    OutlookProperties[OutlookProperties["PR_ATTACH_PATHNAME"] = 14088] = "PR_ATTACH_PATHNAME";
-    OutlookProperties[OutlookProperties["PR_RENDERING_POSITION"] = 14091] = "PR_RENDERING_POSITION";
-    OutlookProperties[OutlookProperties["PR_ATTACH_LONG_PATHNAME"] = 14093] = "PR_ATTACH_LONG_PATHNAME";
-    OutlookProperties[OutlookProperties["PR_ATTACH_MIME_TAG"] = 14094] = "PR_ATTACH_MIME_TAG";
-    OutlookProperties[OutlookProperties["PR_ATTACH_MIME_SEQUENCE"] = 14096] = "PR_ATTACH_MIME_SEQUENCE";
-    OutlookProperties[OutlookProperties["PR_ATTACH_CONTENT_ID"] = 14098] = "PR_ATTACH_CONTENT_ID";
-    OutlookProperties[OutlookProperties["PR_ATTACH_FLAGS"] = 14100] = "PR_ATTACH_FLAGS";
-    OutlookProperties[OutlookProperties["PR_ACCOUNT"] = 14848] = "PR_ACCOUNT";
-    OutlookProperties[OutlookProperties["PR_CALLBACK_TELEPHONE_NUMBER"] = 14850] = "PR_CALLBACK_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_GENERATION"] = 14853] = "PR_GENERATION";
-    OutlookProperties[OutlookProperties["PR_GIVEN_NAME"] = 14854] = "PR_GIVEN_NAME";
-    OutlookProperties[OutlookProperties["PR_GOVERNMENT_ID_NUMBER"] = 14855] = "PR_GOVERNMENT_ID_NUMBER";
-    OutlookProperties[OutlookProperties["PR_BUSINESS_TELEPHONE_NUMBER"] = 14856] = "PR_BUSINESS_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_HOME_TELEPHONE_NUMBER"] = 14857] = "PR_HOME_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_INITIALS"] = 14858] = "PR_INITIALS";
-    OutlookProperties[OutlookProperties["PR_KEYWORD"] = 14859] = "PR_KEYWORD";
-    OutlookProperties[OutlookProperties["PR_LANGUAGE"] = 14860] = "PR_LANGUAGE";
-    OutlookProperties[OutlookProperties["PR_LOCATION"] = 14861] = "PR_LOCATION";
-    OutlookProperties[OutlookProperties["PR_MHS_COMMON_NAME"] = 14863] = "PR_MHS_COMMON_NAME";
-    OutlookProperties[OutlookProperties["PR_ORGANIZATIONAL_ID_NUMBER"] = 14864] = "PR_ORGANIZATIONAL_ID_NUMBER";
-    OutlookProperties[OutlookProperties["PR_SURNAME"] = 14865] = "PR_SURNAME";
-    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_NAME"] = 14867] = "PR_ORIGINAL_DISPLAY_NAME";
-    OutlookProperties[OutlookProperties["PR_POSTAL_ADDRESS"] = 14869] = "PR_POSTAL_ADDRESS";
-    OutlookProperties[OutlookProperties["PT_UNICODE"] = 14870] = "PT_UNICODE";
-    OutlookProperties[OutlookProperties["PR_TITLE"] = 14871] = "PR_TITLE";
-    OutlookProperties[OutlookProperties["PR_DEPARTMENT_NAME"] = 14872] = "PR_DEPARTMENT_NAME";
-    OutlookProperties[OutlookProperties["PR_OFFICE_LOCATION"] = 14873] = "PR_OFFICE_LOCATION";
-    OutlookProperties[OutlookProperties["PR_PRIMARY_TELEPHONE_NUMBER"] = 14874] = "PR_PRIMARY_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_BUSINESS2_TELEPHONE_NUMBER"] = 14875] = "PR_BUSINESS2_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_MOBILE_TELEPHONE_NUMBER"] = 14876] = "PR_MOBILE_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_RADIO_TELEPHONE_NUMBER"] = 14877] = "PR_RADIO_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_CAR_TELEPHONE_NUMBER"] = 14878] = "PR_CAR_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_OTHER_TELEPHONE_NUMBER"] = 14879] = "PR_OTHER_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_TRANSMITABLE_DISPLAY_NAME"] = 14880] = "PR_TRANSMITABLE_DISPLAY_NAME";
-    OutlookProperties[OutlookProperties["PR_PAGER_TELEPHONE_NUMBER"] = 14881] = "PR_PAGER_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_PRIMARY_FAX_NUMBER"] = 14883] = "PR_PRIMARY_FAX_NUMBER";
-    OutlookProperties[OutlookProperties["PR_BUSINESS_FAX_NUMBER"] = 14884] = "PR_BUSINESS_FAX_NUMBER";
-    OutlookProperties[OutlookProperties["PR_HOME_FAX_NUMBER"] = 14885] = "PR_HOME_FAX_NUMBER";
-    OutlookProperties[OutlookProperties["PR_COUNTRY"] = 14886] = "PR_COUNTRY";
-    OutlookProperties[OutlookProperties["PR_LOCALITY"] = 14887] = "PR_LOCALITY";
-    OutlookProperties[OutlookProperties["PR_STATE_OR_PROVINCE"] = 14888] = "PR_STATE_OR_PROVINCE";
-    OutlookProperties[OutlookProperties["PR_STREET_ADDRESS"] = 14889] = "PR_STREET_ADDRESS";
-    OutlookProperties[OutlookProperties["PR_POSTAL_CODE"] = 14890] = "PR_POSTAL_CODE";
-    OutlookProperties[OutlookProperties["PR_POST_OFFICE_BOX"] = 14891] = "PR_POST_OFFICE_BOX";
-    OutlookProperties[OutlookProperties["PR_TELEX_NUMBER"] = 14892] = "PR_TELEX_NUMBER";
-    OutlookProperties[OutlookProperties["PR_ISDN_NUMBER"] = 14893] = "PR_ISDN_NUMBER";
-    OutlookProperties[OutlookProperties["PR_ASSISTANT_TELEPHONE_NUMBER"] = 14894] = "PR_ASSISTANT_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_HOME2_TELEPHONE_NUMBER"] = 14895] = "PR_HOME2_TELEPHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_ASSISTANT"] = 14896] = "PR_ASSISTANT";
-    OutlookProperties[OutlookProperties["PR_HOBBIES"] = 14915] = "PR_HOBBIES";
-    OutlookProperties[OutlookProperties["PR_MIDDLE_NAME"] = 14916] = "PR_MIDDLE_NAME";
-    OutlookProperties[OutlookProperties["PR_DISPLAY_NAME_PREFIX"] = 14917] = "PR_DISPLAY_NAME_PREFIX";
-    OutlookProperties[OutlookProperties["PR_PROFESSION"] = 14918] = "PR_PROFESSION";
-    OutlookProperties[OutlookProperties["PR_REFERRED_BY_NAME"] = 14919] = "PR_REFERRED_BY_NAME";
-    OutlookProperties[OutlookProperties["PR_SPOUSE_NAME"] = 14920] = "PR_SPOUSE_NAME";
-    OutlookProperties[OutlookProperties["PR_COMPUTER_NETWORK_NAME"] = 14921] = "PR_COMPUTER_NETWORK_NAME";
-    OutlookProperties[OutlookProperties["PR_CUSTOMER_ID"] = 14922] = "PR_CUSTOMER_ID";
-    OutlookProperties[OutlookProperties["PR_TTYTDD_PHONE_NUMBER"] = 14923] = "PR_TTYTDD_PHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_FTP_SITE"] = 14924] = "PR_FTP_SITE";
-    OutlookProperties[OutlookProperties["PR_MANAGER_NAME"] = 14926] = "PR_MANAGER_NAME";
-    OutlookProperties[OutlookProperties["PR_NICKNAME"] = 14927] = "PR_NICKNAME";
-    OutlookProperties[OutlookProperties["PR_PERSONAL_HOME_PAGE"] = 14928] = "PR_PERSONAL_HOME_PAGE";
-    OutlookProperties[OutlookProperties["PR_BUSINESS_HOME_PAGE"] = 14929] = "PR_BUSINESS_HOME_PAGE";
-    OutlookProperties[OutlookProperties["PR_COMPANY_MAIN_PHONE_NUMBER"] = 14935] = "PR_COMPANY_MAIN_PHONE_NUMBER";
-    OutlookProperties[OutlookProperties["PR_CHILDRENS_NAMES"] = 14936] = "PR_CHILDRENS_NAMES";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_CITY"] = 14937] = "PR_HOME_ADDRESS_CITY";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_COUNTRY"] = 14938] = "PR_HOME_ADDRESS_COUNTRY";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_POSTAL_CODE"] = 14939] = "PR_HOME_ADDRESS_POSTAL_CODE";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_STATE_OR_PROVINCE"] = 14940] = "PR_HOME_ADDRESS_STATE_OR_PROVINCE";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_STREET"] = 14941] = "PR_HOME_ADDRESS_STREET";
-    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_POST_OFFICE_BOX"] = 14942] = "PR_HOME_ADDRESS_POST_OFFICE_BOX";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_CITY"] = 14943] = "PR_OTHER_ADDRESS_CITY";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_COUNTRY"] = 14944] = "PR_OTHER_ADDRESS_COUNTRY";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_POSTAL_CODE"] = 14945] = "PR_OTHER_ADDRESS_POSTAL_CODE";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_STATE_OR_PROVINCE"] = 14946] = "PR_OTHER_ADDRESS_STATE_OR_PROVINCE";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_STREET"] = 14947] = "PR_OTHER_ADDRESS_STREET";
-    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_POST_OFFICE_BOX"] = 14948] = "PR_OTHER_ADDRESS_POST_OFFICE_BOX";
-    OutlookProperties[OutlookProperties["PR_FOLDER_TYPE"] = 13825] = "PR_FOLDER_TYPE";
-    OutlookProperties[OutlookProperties["PR_CONTENT_COUNT"] = 13826] = "PR_CONTENT_COUNT";
-    OutlookProperties[OutlookProperties["PR_CONTENT_UNREAD"] = 13827] = "PR_CONTENT_UNREAD";
-    OutlookProperties[OutlookProperties["PR_SUBFOLDERS"] = 13834] = "PR_SUBFOLDERS";
-    OutlookProperties[OutlookProperties["PR_CONTAINER_CLASS"] = 13843] = "PR_CONTAINER_CLASS";
-    OutlookProperties[OutlookProperties["PR_CONTAINER_FLAGS"] = 13824] = "PR_CONTAINER_FLAGS";
-    OutlookProperties[OutlookProperties["PR_DISPLAY_NAME"] = 12289] = "PR_DISPLAY_NAME";
-    OutlookProperties[OutlookProperties["PR_RECIPIENT_FLAGS"] = 24573] = "PR_RECIPIENT_FLAGS";
-    OutlookProperties[OutlookProperties["PR_SMTP_ADDRESS"] = 14846] = "PR_SMTP_ADDRESS";
-    OutlookProperties[OutlookProperties["PidTagRecipientOrder"] = 24543] = "PidTagRecipientOrder";
-    OutlookProperties[OutlookProperties["PidTagConversationId"] = 12307] = "PidTagConversationId";
-    OutlookProperties[OutlookProperties["PidTagConversationIndexTracking"] = 12310] = "PidTagConversationIndexTracking";
-    OutlookProperties[OutlookProperties["PidLidLogType"] = 34560] = "PidLidLogType";
-    OutlookProperties[OutlookProperties["PidLidTaskStartDate"] = 33028] = "PidLidTaskStartDate";
-    OutlookProperties[OutlookProperties["PidLidTaskDueDate"] = 33029] = "PidLidTaskDueDate";
-    OutlookProperties[OutlookProperties["PidLidReminderSet"] = 34051] = "PidLidReminderSet";
-    OutlookProperties[OutlookProperties["PidLidReminderDelta"] = 34049] = "PidLidReminderDelta";
-    OutlookProperties[OutlookProperties["PidLidLogStart"] = 34566] = "PidLidLogStart";
-    OutlookProperties[OutlookProperties["PidLidLogDuration"] = 34567] = "PidLidLogDuration";
-    OutlookProperties[OutlookProperties["PidLidLogEnd"] = 34568] = "PidLidLogEnd";
-    OutlookProperties[OutlookProperties["PidLidLogFlags"] = 34572] = "PidLidLogFlags";
-    OutlookProperties[OutlookProperties["PidLidLogDocumentPrinted"] = 34574] = "PidLidLogDocumentPrinted";
-    OutlookProperties[OutlookProperties["PidLidLogDocumentSaved"] = 34575] = "PidLidLogDocumentSaved";
-    OutlookProperties[OutlookProperties["PidLidLogDocumentRouted"] = 34576] = "PidLidLogDocumentRouted";
-    OutlookProperties[OutlookProperties["PidLidLogDocumentPosted"] = 34577] = "PidLidLogDocumentPosted";
-    OutlookProperties[OutlookProperties["PidLidLogTypeDesc"] = 34578] = "PidLidLogTypeDesc";
-    OutlookProperties[OutlookProperties["PidLidSendMeetingAsIcal"] = 33280] = "PidLidSendMeetingAsIcal";
-    OutlookProperties[OutlookProperties["PidLidBusyStatus"] = 33285] = "PidLidBusyStatus";
-    OutlookProperties[OutlookProperties["PidLidLocation"] = 33288] = "PidLidLocation";
-    OutlookProperties[OutlookProperties["PidLidAppointmentStartWhole"] = 33293] = "PidLidAppointmentStartWhole";
-    OutlookProperties[OutlookProperties["PidLidAppointmentEndWhole"] = 33294] = "PidLidAppointmentEndWhole";
-    OutlookProperties[OutlookProperties["PidLidAppointmentDuration"] = 33299] = "PidLidAppointmentDuration";
-    OutlookProperties[OutlookProperties["PidLidAppointmentColor"] = 33300] = "PidLidAppointmentColor";
-    OutlookProperties[OutlookProperties["PidLidAppointmentSubType"] = 33301] = "PidLidAppointmentSubType";
-    OutlookProperties[OutlookProperties["PidLidAppointmentStateFlags"] = 33303] = "PidLidAppointmentStateFlags";
-    OutlookProperties[OutlookProperties["PidLidResponseStatus"] = 33304] = "PidLidResponseStatus";
-    OutlookProperties[OutlookProperties["PidLidRecurring"] = 33315] = "PidLidRecurring";
-    OutlookProperties[OutlookProperties["PidLidExceptionReplaceTime"] = 33320] = "PidLidExceptionReplaceTime";
-    OutlookProperties[OutlookProperties["PidLidRecurrenceType"] = 33329] = "PidLidRecurrenceType";
-    OutlookProperties[OutlookProperties["PidLidRecurrencePattern"] = 33330] = "PidLidRecurrencePattern";
-    OutlookProperties[OutlookProperties["PidLidAppointmentRecur"] = 33302] = "PidLidAppointmentRecur";
-    OutlookProperties[OutlookProperties["PidLidTimeZoneStruct"] = 33331] = "PidLidTimeZoneStruct";
-    OutlookProperties[OutlookProperties["PidLidAllAttendeesString"] = 33336] = "PidLidAllAttendeesString";
-    OutlookProperties[OutlookProperties["PidLidToAttendeesString"] = 33339] = "PidLidToAttendeesString";
-    OutlookProperties[OutlookProperties["PidLidCcAttendeesString"] = 33340] = "PidLidCcAttendeesString";
-    OutlookProperties[OutlookProperties["PidLidAppointmentSequence"] = 33281] = "PidLidAppointmentSequence";
-    OutlookProperties[OutlookProperties["PidLidConferencingCheck"] = 33344] = "PidLidConferencingCheck";
-    OutlookProperties[OutlookProperties["PidLidConferencingType"] = 33345] = "PidLidConferencingType";
-    OutlookProperties[OutlookProperties["PidLidDirectory"] = 33346] = "PidLidDirectory";
-    OutlookProperties[OutlookProperties["PidLidOrganizerAlias"] = 33347] = "PidLidOrganizerAlias";
-    OutlookProperties[OutlookProperties["PidLidNetShowUrl"] = 33352] = "PidLidNetShowUrl";
-    OutlookProperties[OutlookProperties["PidLidCollaborateDoc"] = 33351] = "PidLidCollaborateDoc";
-    OutlookProperties[OutlookProperties["PidLidAttendeeCriticalChange"] = 1] = "PidLidAttendeeCriticalChange";
-    OutlookProperties[OutlookProperties["PidLidAppointmentCounterProposal"] = 33367] = "PidLidAppointmentCounterProposal";
-    OutlookProperties[OutlookProperties["PidLidIsSilent"] = 4] = "PidLidIsSilent";
-    OutlookProperties[OutlookProperties["PidLidRequiredAttendees"] = 6] = "PidLidRequiredAttendees";
-    OutlookProperties[OutlookProperties["PidTagMessageLocaleId"] = 16369] = "PidTagMessageLocaleId";
-    OutlookProperties[OutlookProperties["PidLidFileUnder"] = 32773] = "PidLidFileUnder";
-    OutlookProperties[OutlookProperties["PidLidHomeAddress"] = 32794] = "PidLidHomeAddress";
-    OutlookProperties[OutlookProperties["PidLidWorkAddress"] = 32795] = "PidLidWorkAddress";
-    OutlookProperties[OutlookProperties["PidLidOtherAddress"] = 32796] = "PidLidOtherAddress";
-    OutlookProperties[OutlookProperties["PidLidPostalAddressId"] = 32802] = "PidLidPostalAddressId";
-    OutlookProperties[OutlookProperties["PidLidHtml"] = 32811] = "PidLidHtml";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressStreet"] = 32837] = "PidLidWorkAddressStreet";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressCity"] = 32838] = "PidLidWorkAddressCity";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressState"] = 32839] = "PidLidWorkAddressState";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressPostalCode"] = 32840] = "PidLidWorkAddressPostalCode";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressCountry"] = 32841] = "PidLidWorkAddressCountry";
-    OutlookProperties[OutlookProperties["PidLidWorkAddressPostOfficeBox"] = 32842] = "PidLidWorkAddressPostOfficeBox";
-    OutlookProperties[OutlookProperties["PidLidInstantMessagingAddress"] = 32866] = "PidLidInstantMessagingAddress";
-    OutlookProperties[OutlookProperties["PidLidEmail1DisplayName"] = 32896] = "PidLidEmail1DisplayName";
-    OutlookProperties[OutlookProperties["PidLidEmail1AddressType"] = 32898] = "PidLidEmail1AddressType";
-    OutlookProperties[OutlookProperties["PidLidEmail1EmailAddress"] = 32899] = "PidLidEmail1EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidEmail1OriginalDisplayName"] = 32900] = "PidLidEmail1OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidEmail2DisplayName"] = 32912] = "PidLidEmail2DisplayName";
-    OutlookProperties[OutlookProperties["PidLidEmail2AddressType"] = 32914] = "PidLidEmail2AddressType";
-    OutlookProperties[OutlookProperties["PidLidEmail2EmailAddress"] = 32915] = "PidLidEmail2EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidEmail2OriginalDisplayName"] = 32916] = "PidLidEmail2OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidEmail3DisplayName"] = 32928] = "PidLidEmail3DisplayName";
-    OutlookProperties[OutlookProperties["PidLidEmail3AddressType"] = 32930] = "PidLidEmail3AddressType";
-    OutlookProperties[OutlookProperties["PidLidEmail3EmailAddress"] = 32931] = "PidLidEmail3EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidEmail3OriginalDisplayName"] = 32932] = "PidLidEmail3OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidFax1AddressType"] = 32946] = "PidLidFax1AddressType";
-    OutlookProperties[OutlookProperties["PidLidFax1EmailAddress"] = 32947] = "PidLidFax1EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidFax1OriginalDisplayName"] = 32948] = "PidLidFax1OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidFax2AddressType"] = 32962] = "PidLidFax2AddressType";
-    OutlookProperties[OutlookProperties["PidLidFax2EmailAddress"] = 32963] = "PidLidFax2EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidFax2OriginalDisplayName"] = 32964] = "PidLidFax2OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidFax3AddressType"] = 32978] = "PidLidFax3AddressType";
-    OutlookProperties[OutlookProperties["PidLidFax3EmailAddress"] = 32979] = "PidLidFax3EmailAddress";
-    OutlookProperties[OutlookProperties["PidLidFax3OriginalDisplayName"] = 32980] = "PidLidFax3OriginalDisplayName";
-    OutlookProperties[OutlookProperties["PidLidFreeBusyLocation"] = 32984] = "PidLidFreeBusyLocation";
-    OutlookProperties[OutlookProperties["PidTagBirthday"] = 14914] = "PidTagBirthday";
-    OutlookProperties[OutlookProperties["PidTagWeddingAnniversary"] = 14913] = "PidTagWeddingAnniversary";
-    OutlookProperties[OutlookProperties["PidLidPercentComplete"] = 33026] = "PidLidPercentComplete";
-    OutlookProperties[OutlookProperties["PidLidTaskStatus"] = 33025] = "PidLidTaskStatus";
-    OutlookProperties[OutlookProperties["PidLidTaskDeadOccurrence"] = 33033] = "PidLidTaskDeadOccurrence";
-    OutlookProperties[OutlookProperties["PidLidTaskDateCompleted"] = 33039] = "PidLidTaskDateCompleted";
-    OutlookProperties[OutlookProperties["PidLidTaskActualEffort"] = 33040] = "PidLidTaskActualEffort";
-    OutlookProperties[OutlookProperties["PidLidTaskEstimatedEffort"] = 33041] = "PidLidTaskEstimatedEffort";
-    OutlookProperties[OutlookProperties["PidLidTaskVersion"] = 33042] = "PidLidTaskVersion";
-    OutlookProperties[OutlookProperties["PidLidTaskRecurrence"] = 33046] = "PidLidTaskRecurrence";
-    OutlookProperties[OutlookProperties["PidLidTaskComplete"] = 33052] = "PidLidTaskComplete";
-    OutlookProperties[OutlookProperties["PidLidTaskOwner"] = 33055] = "PidLidTaskOwner";
-    OutlookProperties[OutlookProperties["PidLidTaskAssigner"] = 33057] = "PidLidTaskAssigner";
-    OutlookProperties[OutlookProperties["PidLidTaskLastUser"] = 33058] = "PidLidTaskLastUser";
-    OutlookProperties[OutlookProperties["PidLidTaskOrdinal"] = 33059] = "PidLidTaskOrdinal";
-    OutlookProperties[OutlookProperties["PidLidTaskFRecurring"] = 33062] = "PidLidTaskFRecurring";
-    OutlookProperties[OutlookProperties["PidLidTaskOwnership"] = 33065] = "PidLidTaskOwnership";
-    OutlookProperties[OutlookProperties["PidLidTaskAcceptanceState"] = 33066] = "PidLidTaskAcceptanceState";
-    OutlookProperties[OutlookProperties["PidLidYomiLastName"] = 32813] = "PidLidYomiLastName";
-    OutlookProperties[OutlookProperties["PidLidYomiFirstName"] = 32812] = "PidLidYomiFirstName";
-    OutlookProperties[OutlookProperties["PidLidYomiCompanyName"] = 32814] = "PidLidYomiCompanyName";
-})(OutlookProperties = exports.OutlookProperties || (exports.OutlookProperties = {}));
-
-
-/***/ }),
-
-/***/ 3825:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-/**
- * PST adapter utilities
- */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createPropertyFinder = exports.processNameToIDMap = void 0;
-const msftUuidStringify_1 = __webpack_require__(6730);
-const NodeMap_class_1 = __webpack_require__(7420);
-const PHUtil_1 = __webpack_require__(9864);
-const PropertyContextUtil_1 = __webpack_require__(6918);
-const PSTUtil_class_1 = __webpack_require__(8391);
-const guidMap = new Map([
-    ['00020329-0000-0000-C000-000000000046', 0],
-    ['00062008-0000-0000-C000-000000000046', 1],
-    ['00062004-0000-0000-C000-000000000046', 2],
-    ['00020386-0000-0000-C000-000000000046', 3],
-    ['00062002-0000-0000-C000-000000000046', 4],
-    ['6ED8DA90-450B-101B-98DA-00AA003F1305', 5],
-    ['0006200A-0000-0000-C000-000000000046', 6],
-    ['41F28F13-83F4-4114-A584-EEDB5A6B0BFF', 7],
-    ['0006200E-0000-0000-C000-000000000046', 8],
-    ['00062041-0000-0000-C000-000000000046', 9],
-    ['00062003-0000-0000-C000-000000000046', 10],
-    ['4442858E-A9E3-4E80-B900-317A210CC15B', 11],
-    ['00020328-0000-0000-C000-000000000046', 12],
-    ['71035549-0739-4DCB-9163-00F0580DBBDF', 13],
-    ['00062040-0000-0000-C000-000000000046', 14],
-]);
-/**
- * Process name to ID map.
- *
- * @param nameToIdMapDescriptorNode nodeId 97
- */
-function processNameToIDMap(nameToIdMapDescriptorNode, resolver) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const subNode = nameToIdMapDescriptorNode.getSubNode();
-        const bcTable = (yield (yield (0, PropertyContextUtil_1.getPropertyContext)(yield (0, PHUtil_1.getHeapFrom)(subNode), resolver))
-            .list());
-        function getTableItem(key) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const found = bcTable.find(it => it.key === key);
-                if (found === undefined) {
-                    throw new Error(`processNameToIDMap key:${key} is null`);
-                }
-                const { value } = found;
-                if (value instanceof ArrayBuffer) {
-                    return value;
-                }
-                return undefined;
-            });
-        }
-        // process the map
-        // Get the guids
-        const guidEntry = yield getTableItem(2);
-        if (!guidEntry) {
-            throw new Error('PSTFile::processNameToIDMap guidEntry is null');
-        }
-        const guids = new Uint8Array(guidEntry);
-        const nGuids = Math.trunc(guids.byteLength / 16);
-        const guidIndexes = [];
-        let offset = 0;
-        for (let i = 0; i < nGuids; ++i) {
-            const strUID = (0, msftUuidStringify_1.msftUuidStringify)(guids, offset).toUpperCase();
-            const guid = guidMap.get(strUID);
-            if (guid) {
-                guidIndexes[i] = guid;
-            }
-            else {
-                guidIndexes[i] = -1; // We don't know this guid
-            }
-            // console.log('PSTFile:: processNameToIdMap idx: ' + i + ', ' + strUID + ', ' + guidIndexes[i]);
-            offset += 16;
-        }
-        // if we have a reference to an internal descriptor
-        const mapEntries = yield getTableItem(3);
-        if (!mapEntries) {
-            throw new Error('PSTFile::processNameToIDMap mapEntries is null');
-        }
-        const nameToIdByte = new Uint8Array(mapEntries);
-        const nameToIdByteView = new DataView(mapEntries);
-        const stringMapEntries = yield getTableItem(4);
-        if (!stringMapEntries) {
-            throw new Error('PSTFile::processNameToIDMap stringMapEntries is null');
-        }
-        const stringNameToIdByte = new Uint8Array(stringMapEntries);
-        const stringNameToIdByteView = new DataView(stringMapEntries);
-        const stringNameToIdByteBuffer = Buffer.from(stringMapEntries);
-        const nodeMap = new NodeMap_class_1.NodeMap();
-        // process the entries
-        for (let x = 0; x + 8 < nameToIdByte.length; x += 8) {
-            const key = nameToIdByteView.getUint32(x, true);
-            let guid = nameToIdByteView.getUint16(x + 4, true);
-            let propId = nameToIdByteView.getUint16(x + 6, true);
-            if (key == 0x55555555) {
-                break;
-            }
-            const PS_PUBLIC_STRINGS = 0;
-            const PS_MAPI = 12;
-            if ((guid & 0x0001) == 0) {
-                // identifier is numeric
-                propId += 0x8000;
-                guid >>= 1;
-                let guidIndex;
-                if (guid == 1) {
-                    guidIndex = PS_MAPI;
-                }
-                else if (guid == 2) {
-                    guidIndex = PS_PUBLIC_STRINGS;
-                }
-                else {
-                    guidIndex = guidIndexes[guid - 3];
-                }
-                nodeMap.setId(key, propId, guidIndex);
-            }
-            else {
-                // identifier is a string
-                // key is byte offset into the String stream in which the string name of the property is stored.
-                const len = stringNameToIdByteView.getUint32(key, true);
-                const keyByteValue = Buffer.alloc(len);
-                PSTUtil_class_1.PSTUtil.arraycopy(stringNameToIdByteBuffer, key + 4, keyByteValue, 0, keyByteValue.length);
-                propId += 0x8000;
-                nodeMap.setId(keyByteValue.toString('utf16le').replace(/\0/g, ''), propId);
-            }
-        }
-        return nodeMap;
-    });
-}
-exports.processNameToIDMap = processNameToIDMap;
-function createPropertyFinder(props) {
-    return {
-        findByKey(key) {
-            return props.find(it => it.key === key);
-        },
-    };
-}
-exports.createPropertyFinder = createPropertyFinder;
-
-
-/***/ }),
-
-/***/ 9864:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-/**
- * PST higher level utilities
- */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getHeapFrom = void 0;
-function getHeapFrom(node) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const data_array = yield node.getData();
-        const data_chunks = new Map();
-        let bClientSig = 0;
-        let userRootHnid = 0;
-        for (let x = 0; x < data_array.length; x++) {
-            if (x === 0) {
-                ({ bClientSig, userRoot: userRootHnid } = load_root_header(data_chunks, data_array[x]));
-            }
-            else {
-                load_page_header(data_chunks, data_array[x], x);
-            }
-        }
-        return {
-            bClientSig,
-            userRootHnid,
-            toString() {
-                return `${node}`;
-            },
-            getReader() {
-                return {
-                    getHeapBuffers(hnid) {
-                        return __awaiter(this, void 0, void 0, function* () {
-                            if (hnid === 0) {
-                                return [];
-                            }
-                            else if (hnid & 0x1f) {
-                                // this is NID (node)
-                                const childNode = yield node.getChildBy(hnid);
-                                if (childNode === undefined) {
-                                    throw new Error(`childNode=0x${hnid.toString(16)} of ${node} not found`);
-                                }
-                                const data_array = yield childNode.getData();
-                                return data_array;
-                            }
-                            else {
-                                // this is HID (heap)
-                                const data = data_chunks.get(hnid);
-                                if (data === undefined) {
-                                    throw new Error(`heap=0x${hnid.toString(16)} of ${node} not found`);
-                                }
-                                return [data];
-                            }
-                        });
-                    },
-                    toString() {
-                        return `reader of ${node}`;
-                    },
-                };
-            },
-        };
-    });
-}
-exports.getHeapFrom = getHeapFrom;
-/**
- * Parse HNHDR
- *
- * @see https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-pst/8e4ae05c-3c24-4103-b7e5-ffef6f244834
- */
-function load_root_header(data_chunks, data) {
-    const view = new DataView(data);
-    const page_map = view.getUint16(0, true);
-    const sig = view.getUint8(2);
-    const bClientSig = view.getUint8(3);
-    const userRoot = view.getUint32(4, true);
-    if (sig !== 0xec) {
-        throw new Error("invalid HNHDR signature found");
-    }
-    // read HNPAGEMAP
-    const offsets_count = view.getUint16(page_map, true) + 1;
-    for (let x = 0; x < offsets_count - 1; x++) {
-        const from = view.getUint16(page_map + 4 + 2 * (x), true);
-        const to = view.getUint16(page_map + 4 + 2 * (x + 1), true);
-        data_chunks.set(0x20 * (1 + x), data.slice(from, to));
-    }
-    return { bClientSig, userRoot };
-}
-function load_page_header(data_chunks, data, page_index) {
-    const view = new DataView(data);
-    const page_map = view.getUint16(0, true);
-    const offsets_count = view.getUint16(page_map, true) + 1;
-    for (let x = 0; x < offsets_count - 1; x++) {
-        const from = view.getUint16(page_map + 4 + 2 * (x), true);
-        const to = view.getUint16(page_map + 4 + 2 * (x + 1), true);
-        data_chunks.set(0x20 * (1 + x) + 65536 * page_index, data.slice(from, to));
-    }
-}
-
-
-/***/ }),
-
-/***/ 7084:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-/**
- * PST lower level misc utilities
- */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.splitPer = void 0;
-/**
- *
- * @internal
- */
-function* splitPer(array, per) {
-    for (let offset = 0; offset < array.byteLength; offset += per) {
-        yield array.slice(offset, offset + per);
-    }
-}
-exports.splitPer = splitPer;
-
-
-/***/ }),
-
-/***/ 138:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-/**
- * PST lower level utilities
- */
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.openLowPst = exports.readLong = exports.readNumber64 = void 0;
-const long_1 = __importDefault(__webpack_require__(1583));
-const PSTUtil_class_1 = __webpack_require__(8391);
-const pako_1 = __webpack_require__(9591);
-function surelyReader(readFile) {
-    return (buffer, offset, length, position) => __awaiter(this, void 0, void 0, function* () {
-        const bytesRead = yield readFile(buffer, offset, length, position);
-        if (bytesRead !== length) {
-            throw new Error(`file reader must provide buffer ${length} bytes from position ${position}, while we got ${bytesRead} bytes`);
-        }
-        return length;
-    });
-}
-/**
- * @internal
- */
-function readNumber64(view, offset) {
-    return new long_1.default(view.getUint32(offset, true), view.getUint32(offset + 4, true), true)
-        .toNumber();
-}
-exports.readNumber64 = readNumber64;
-/**
- * @internal
- */
-function readLong(view, offset) {
-    return new long_1.default(view.getUint32(offset, true), view.getUint32(offset + 4, true), true);
-}
-exports.readLong = readLong;
-/**
- *
- * @internal
- */
-function passThru1(data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return data;
-    });
-}
-/**
- *
- * @internal
- */
-function willUnzip1(data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (data.byteLength >= 4) {
-            const view = new DataView(data);
-            if (view.getUint16(0, true) === 0x9c78) {
-                const inflated = (0, pako_1.inflate)(data);
-                return inflated.buffer;
-            }
-        }
-        return data;
-    });
-}
-var ptr32;
-(function (ptr32) {
-    function readBlockPtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 12 * x;
-            const blockId = view.getUint32(top + 0, true);
-            array.push({
-                blockId,
-                offset: new long_1.default(view.getUint32(top + 4, true)),
-                size: view.getUint16(top + 8, true),
-                isData: (blockId & 2) === 0,
-            });
-        }
-        return array;
-    }
-    ptr32.readBlockPtr = readBlockPtr;
-    function readTablePtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 12 * x;
-            array.push({
-                start: new long_1.default(view.getUint32(top + 0, true)),
-                u1: new long_1.default(view.getUint32(top + 4, true)),
-                offset: new long_1.default(view.getUint32(top + 8, true)),
-            });
-        }
-        return array;
-    }
-    ptr32.readTablePtr = readTablePtr;
-    function readNodePtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 16 * x;
-            array.push({
-                nodeId: view.getUint32(top + 0, true),
-                blockId: view.getUint32(top + 4, true),
-                subBlockId: view.getUint32(top + 8, true),
-                parentNodeId: view.getUint32(top + 12, true),
-            });
-        }
-        return array;
-    }
-    ptr32.readNodePtr = readNodePtr;
-    function readSLBlock(view, offset) {
-        const count = view.getUint16(offset + 2, true);
-        const entries = [];
-        for (let x = 0; x < count; x++) {
-            const top = offset + 4 + 12 * x;
-            entries.push({
-                nodeId: view.getUint32(top + 0, true),
-                blockId: view.getUint32(top + 4, true),
-                subBlockId: view.getUint32(top + 8, true),
-            });
-        }
-        return {
-            entries
-        };
-    }
-    ptr32.readSLBlock = readSLBlock;
-    function readXBlock(view, offset, itemCount) {
-        const entries = [];
-        for (let x = 0; x < itemCount; x++) {
-            const top = offset + 8 + 4 * x;
-            entries.push({
-                blockId: view.getUint32(top + 0, true),
-            });
-        }
-        return entries;
-    }
-    ptr32.readXBlock = readXBlock;
-    function readXXBlock(view, offset, itemCount) {
-        const entries = [];
-        for (let x = 0; x < itemCount; x++) {
-            const top = offset + 8 + 4 * x;
-            entries.push({
-                blockId: view.getUint32(top + 0, true),
-            });
-        }
-        return entries;
-    }
-    ptr32.readXXBlock = readXXBlock;
-    function readSIBlock(view, offset) {
-        const count = view.getUint16(offset + 2, true);
-        const entries = [];
-        for (let x = 0; x < count; x++) {
-            const top = offset + 4 + 12 * x;
-            entries.push({
-                nodeId: view.getUint32(top + 0, true),
-                blockId: view.getUint32(top + 4, true),
-            });
-        }
-        return {
-            entries
-        };
-    }
-    ptr32.readSIBlock = readSIBlock;
-})(ptr32 || (ptr32 = {}));
-var ptr64;
-(function (ptr64) {
-    function readBlockPtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 24 * x;
-            const blockId = readNumber64(view, top + 0);
-            array.push({
-                blockId,
-                offset: readLong(view, top + 8),
-                size: view.getUint16(top + 16, true),
-                isData: (blockId & 2) === 0,
-            });
-        }
-        return array;
-    }
-    ptr64.readBlockPtr = readBlockPtr;
-    function readTablePtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 24 * x;
-            array.push({
-                start: readLong(view, top + 0),
-                u1: readLong(view, top + 8),
-                offset: readLong(view, top + 16),
-            });
-        }
-        return array;
-    }
-    ptr64.readTablePtr = readTablePtr;
-    function readNodePtr(view, offset, footer) {
-        const array = [];
-        for (let x = 0; x < footer.itemCount; x++) {
-            const top = offset + 32 * x;
-            array.push({
-                nodeId: readNumber64(view, top + 0),
-                blockId: readNumber64(view, top + 8),
-                subBlockId: readNumber64(view, top + 16),
-                parentNodeId: view.getUint32(top + 24, true),
-            });
-        }
-        return array;
-    }
-    ptr64.readNodePtr = readNodePtr;
-    function readSLBlock(view, offset) {
-        const count = view.getUint16(offset + 2, true);
-        const entries = [];
-        for (let x = 0; x < count; x++) {
-            const top = offset + 8 + 24 * x;
-            entries.push({
-                nodeId: view.getUint32(top + 0, true),
-                blockId: readNumber64(view, top + 8),
-                subBlockId: readNumber64(view, top + 16),
-            });
-        }
-        return {
-            entries
-        };
-    }
-    ptr64.readSLBlock = readSLBlock;
-    function readXBlock(view, offset, itemCount) {
-        const entries = [];
-        for (let x = 0; x < itemCount; x++) {
-            const top = offset + 8 + 8 * x;
-            entries.push({
-                blockId: readNumber64(view, top + 0),
-            });
-        }
-        return entries;
-    }
-    ptr64.readXBlock = readXBlock;
-    function readXXBlock(view, offset, itemCount) {
-        const entries = [];
-        for (let x = 0; x < itemCount; x++) {
-            const top = offset + 8 + 8 * x;
-            entries.push({
-                blockId: readNumber64(view, top + 0),
-            });
-        }
-        return entries;
-    }
-    ptr64.readXXBlock = readXXBlock;
-    function readSIBlock(view, offset) {
-        const count = view.getUint16(offset + 2, true);
-        const entries = [];
-        for (let x = 0; x < count; x++) {
-            const top = offset + 8 + 24 * x;
-            entries.push({
-                nodeId: view.getUint32(top + 0, true),
-                blockId: readNumber64(view, top + 8),
-            });
-        }
-        return {
-            entries
-        };
-    }
-    ptr64.readSIBlock = readSIBlock;
-})(ptr64 || (ptr64 = {}));
-const ver0x0e = {
-    BACKLINK_OFFSET: 0x1f8,
-    LEVEL_INDICATOR_OFFSET: 0x1f3,
-    ITEM_COUNT_OFFSET: 0x1f0,
-    ENC_OFFSET: 0x1cd,
-    SECOND_POINTER_COUNT: 0xB8,
-    SECOND_POINTER: 0xBC,
-    INDEX_POINTER_COUNT: 0xC0,
-    INDEX_POINTER: 0xC4,
-    BlockSize: 512,
-    readId: (view, offset) => new long_1.default(view.getUint32(offset, true)),
-    readBlockPtr: ptr32.readBlockPtr,
-    readTablePtr: ptr32.readTablePtr,
-    readNodePtr: ptr32.readNodePtr,
-    readSLBlock: ptr32.readSLBlock,
-    readSIBlock: ptr32.readSIBlock,
-    readXBlock: ptr32.readXBlock,
-    readXXBlock: ptr32.readXXBlock,
-    unzipHook: passThru1,
-};
-const ver0x17 = {
-    BACKLINK_OFFSET: 0x1f8,
-    LEVEL_INDICATOR_OFFSET: 0x1eb,
-    ITEM_COUNT_OFFSET: 0x1e8,
-    ENC_OFFSET: 0x201,
-    SECOND_POINTER_COUNT: 0xD8,
-    SECOND_POINTER: 0xE0,
-    INDEX_POINTER_COUNT: 0xE8,
-    INDEX_POINTER: 0xF0,
-    BlockSize: 512,
-    readId: readLong,
-    readBlockPtr: ptr64.readBlockPtr,
-    readTablePtr: ptr64.readTablePtr,
-    readNodePtr: ptr64.readNodePtr,
-    readSLBlock: ptr64.readSLBlock,
-    readSIBlock: ptr64.readSIBlock,
-    readXBlock: ptr64.readXBlock,
-    readXXBlock: ptr64.readXXBlock,
-    unzipHook: passThru1,
-};
-const ver0x24 = {
-    BACKLINK_OFFSET: 0xff0,
-    LEVEL_INDICATOR_OFFSET: 0xfdd,
-    ITEM_COUNT_OFFSET: 0xfd8,
-    ENC_OFFSET: 0x201,
-    SECOND_POINTER_COUNT: 0xD8,
-    SECOND_POINTER: 0xE0,
-    INDEX_POINTER_COUNT: 0xE8,
-    INDEX_POINTER: 0xF0,
-    BlockSize: 4096,
-    readId: readLong,
-    readBlockPtr: ptr64.readBlockPtr,
-    readTablePtr: ptr64.readTablePtr,
-    readNodePtr: ptr64.readNodePtr,
-    readSLBlock: ptr64.readSLBlock,
-    readSIBlock: ptr64.readSIBlock,
-    readXBlock: ptr64.readXBlock,
-    readXXBlock: ptr64.readXXBlock,
-    unzipHook: willUnzip1,
-};
-function openLowPst(api) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const surelyRead = surelyReader(api.readFile);
-        const buffer = new ArrayBuffer(1024);
-        const view = new DataView(buffer, 0, 1024);
-        yield surelyRead(buffer, 0, 1024, 0);
-        const key = '!BDN';
-        if ( false
-            || view.getUint8(0) !== key.charCodeAt(0)
-            || view.getUint8(1) !== key.charCodeAt(1)
-            || view.getUint8(2) !== key.charCodeAt(2)
-            || view.getUint8(3) !== key.charCodeAt(3)) {
-            throw new Error('PSTFile::open Invalid file header (expected: "!BDN"): ' + buffer.slice(0, 4));
-        }
-        const version = view.getUint8(10);
-        let trait;
-        if (false) {}
-        else if (version === 0x0e) {
-            trait = ver0x0e;
-        }
-        else if (version === 0x17) {
-            trait = ver0x17;
-        }
-        else if (version === 0x24) {
-            trait = ver0x24;
-        }
-        else {
-            throw new Error('PSTFile::open Unrecognised PST File version: ' + version);
-        }
-        const encryptionType = view.getUint8(trait.ENC_OFFSET);
-        if (encryptionType === 0x02) {
-            throw new Error('PSTFile::open PST is encrypted');
-        }
-        const unzipHook = trait.unzipHook;
-        function pst_read_block_size(position, size, decrypt) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const buffer = new ArrayBuffer(size);
-                yield surelyRead(buffer, 0, size, position.toNumber());
-                if (decrypt) {
-                    if (false) {}
-                    else if (encryptionType === 0) {
-                        // plain
-                    }
-                    else if (encryptionType === 1) {
-                        PSTUtil_class_1.PSTUtil.decodeArray(new Uint8Array(buffer, 0, size));
-                    }
-                    else {
-                        throw new Error(`Unknown encryptionType ${encryptionType}`);
-                    }
-                }
-                return yield unzipHook(buffer);
-            });
-        }
-        function readBlock(block, decrypt) {
-            return __awaiter(this, void 0, void 0, function* () {
-                return yield unzipHook(yield pst_read_block_size(block.offset, block.size, block.isData && decrypt));
-            });
-        }
-        const blockMap = new Map;
-        const nodeMap = new Map;
-        function loadBlockTree(offset, linku1, start_val) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const buf = yield pst_read_block_size(offset, trait.BlockSize, false);
-                const view = new DataView(buf);
-                const footer = {
-                    itemCount: view.getUint8(trait.ITEM_COUNT_OFFSET),
-                    level: view.getUint8(trait.LEVEL_INDICATOR_OFFSET),
-                    thisId: trait.readId(view, trait.BACKLINK_OFFSET),
-                };
-                if (footer.thisId.neq(linku1)) {
-                    throw new Error(`block buffer seems to be broken. footer id is ${footer.thisId.toNumber()}, while ${linku1.toNumber()} is expected`);
-                }
-                if (footer.level === 0) {
-                    const array = trait.readBlockPtr(view, 0, footer);
-                    for (let x = 0; x < footer.itemCount; x++) {
-                        if (x === 0 && start_val.neq(0) && start_val.neq(array[x].blockId)) {
-                            throw new Error(`block buffer seems to be broken. first blockId is ${array[x].blockId}, while ${start_val.toNumber()} is expected`);
-                        }
-                        if (array[x].blockId === 0) {
-                            throw new Error(`blockId must not be 0`);
-                        }
-                        blockMap.set(array[x].blockId & ~1, array[x]);
-                    }
-                }
-                else {
-                    const array = trait.readTablePtr(view, 0, footer);
-                    for (let x = 0; x < footer.itemCount; x++) {
-                        if (x === 0 && start_val.neq(0) && start_val.neq(array[x].start)) {
-                            throw new Error(`block buffer seems to be broken. first table id is ${array[x].start.toNumber()}, while ${start_val.toNumber()} is expected`);
-                        }
-                        if (array[x].start.eq(0)) {
-                            throw new Error(`table id must not be 0`);
-                        }
-                        yield loadBlockTree(array[x].offset, array[x].u1, array[x].start);
-                    }
-                }
-            });
-        }
-        const block_btree_count = trait.readId(view, trait.INDEX_POINTER_COUNT);
-        const block_btree = trait.readId(view, trait.INDEX_POINTER);
-        yield loadBlockTree(block_btree, block_btree_count, long_1.default.ZERO);
-        function loadNodeTree(offset, linku1, start_val, prevLevel) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const buf = yield pst_read_block_size(offset, trait.BlockSize, false);
-                const view = new DataView(buf);
-                const footer = {
-                    itemCount: view.getUint8(trait.ITEM_COUNT_OFFSET),
-                    level: view.getUint8(trait.LEVEL_INDICATOR_OFFSET),
-                    thisId: trait.readId(view, trait.BACKLINK_OFFSET),
-                };
-                if (prevLevel !== Infinity) {
-                    if (footer.level !== prevLevel - 1) {
-                        throw new Error(`node level descending mismatched`);
-                    }
-                }
-                if (footer.thisId.neq(linku1)) {
-                    throw new Error(`node buffer seems to be broken. footer id is ${footer.thisId.toNumber()}, while ${linku1.toNumber()} is expected`);
-                }
-                if (footer.level === 0) {
-                    const array = trait.readNodePtr(view, 0, footer);
-                    for (let x = 0; x < footer.itemCount; x++) {
-                        if (x === 0 && start_val !== (0) && start_val !== (array[x].nodeId)) {
-                            throw new Error(`node buffer seems to be broken. first nodeId is ${array[x].nodeId}, while ${start_val} is expected`);
-                        }
-                        if (array[x].nodeId === 0) {
-                            break;
-                        }
-                        nodeMap.set(array[x].nodeId, array[x]);
-                    }
-                }
-                else {
-                    const array = trait.readTablePtr(view, 0, footer);
-                    for (let x = 0; x < footer.itemCount; x++) {
-                        if (x === 0 && start_val !== (0) && array[x].start.neq(start_val)) {
-                            throw new Error(`node buffer seems to be broken. table id is ${array[x].start.toNumber()}, while ${start_val} is expected`);
-                        }
-                        if (array[x].start.isZero()) {
-                            throw new Error(`table id must not be 0`);
-                        }
-                        yield loadNodeTree(array[x].offset, array[x].u1, array[x].start.toNumber(), footer.level);
-                    }
-                }
-            });
-        }
-        const node_btree_count = trait.readId(view, trait.SECOND_POINTER_COUNT);
-        const node_btree = trait.readId(view, trait.SECOND_POINTER);
-        yield loadNodeTree(node_btree, node_btree_count, 0x21, Infinity);
-        function loadMainBlockTo(blockId, consumer) {
-            return __awaiter(this, void 0, void 0, function* () {
-                if (blockId === 0) {
-                    return;
-                }
-                const block = blockMap.get(blockId & ~1);
-                if (block === undefined) {
-                    throw new Error(`blockId=${blockId} not found`);
-                }
-                if (block.isData) {
-                    yield consumer(block);
-                }
-                else {
-                    const buf = yield readBlock(block, true);
-                    const view = new DataView(buf);
-                    const bType = view.getUint8(0);
-                    if (bType !== 1) {
-                        throw new Error("btype != 1");
-                    }
-                    const level = view.getUint8(1);
-                    const itemCount = view.getUint16(2, true);
-                    if (false) {}
-                    else if (level === 1) {
-                        //XBLOCK
-                        const entries = trait.readXBlock(view, 0, itemCount);
-                        for (let x = 0; x < entries.length; x++) {
-                            yield loadMainBlockTo(entries[x].blockId, consumer);
-                        }
-                    }
-                    else if (level === 2) {
-                        //XXBLOCK
-                        const entries = trait.readXXBlock(view, 0, itemCount);
-                        for (let x = 0; x < entries.length; x++) {
-                            yield loadMainBlockTo(entries[x].blockId, consumer);
-                        }
-                    }
-                    else {
-                        throw new Error(`invalid level ${level}`);
-                    }
-                }
-            });
-        }
-        function readSubNode(blockId, subNodeMap) {
-            return __awaiter(this, void 0, void 0, function* () {
-                if (blockId === 0) {
-                    return;
-                }
-                const block = blockMap.get(blockId);
-                if (block === undefined) {
-                    throw new Error(`blockId ${blockId} not found`);
-                }
-                const buf = yield readBlock(block, true);
-                const view = new DataView(buf);
-                if (view.getUint8(0) !== 2) {
-                    throw new Error("btype != 2");
-                }
-                const level = view.getUint8(1);
-                if (level === 0) {
-                    //SLBLOCK
-                    const { entries } = trait.readSLBlock(view, 0);
-                    for (let index = 0; index < entries.length; index++) {
-                        subNodeMap.set(entries[index].nodeId, {
-                            dataBlockId: entries[index].blockId,
-                            subBlockId: entries[index].subBlockId,
-                        });
-                    }
-                }
-                else {
-                    //SIBLOCK
-                    const struc = trait.readSIBlock(view, 0);
-                    const { entries } = struc;
-                    for (let index = 0; index < entries.length; index++) {
-                        yield readSubNode(entries[index].blockId, subNodeMap);
-                    }
-                }
-            });
-        }
-        //const nodeMap = processNameToIDMap();
-        function getOneNodeBy(nodeId) {
-            if (nodeId === 0) {
-                return undefined;
-            }
-            const ptr = nodeMap.get(nodeId);
-            if (ptr === undefined) {
-                return undefined;
-            }
-            const { blockId } = ptr;
-            function getData() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const array = [];
-                    yield loadMainBlockTo(blockId, (block) => __awaiter(this, void 0, void 0, function* () {
-                        const buf = yield readBlock(block, true);
-                        array.push(buf);
-                    }));
-                    if (array.length === 0) {
-                        return new ArrayBuffer(0);
-                    }
-                    else {
-                        return array[0];
-                    }
-                });
-            }
-            function getDataOf(blockId) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const array = [];
-                    yield loadMainBlockTo(blockId, (block) => __awaiter(this, void 0, void 0, function* () {
-                        array.push(yield readBlock(block, true));
-                    }));
-                    return array;
-                });
-            }
-            function getChildOf(blockId, childNodeId, parentToString) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    if (blockId === 0) {
-                        return undefined;
-                    }
-                    const block = blockMap.get(blockId & ~1);
-                    if (block === undefined) {
-                        throw new Error(`blockId=${blockId}`
-                            + ` for childNodeId=0x${childNodeId.toString(16)}`
-                            + ` of ${parentToString}`
-                            + ` not found`);
-                    }
-                    const subNodeMap = new Map();
-                    yield readSubNode(block.blockId, subNodeMap);
-                    const thisToString = `childNodeId=0x${childNodeId.toString(16)}`
-                        + `,nidType=0x${(childNodeId & 0x1f).toString(16)}`
-                        + ` of ${parentToString}`;
-                    const subNode = subNodeMap.get(childNodeId);
-                    if (subNode === undefined) {
-                        return undefined;
-                    }
-                    return {
-                        nodeId: childNodeId,
-                        getChildBy: (childNodeId) => __awaiter(this, void 0, void 0, function* () {
-                            return yield getChildOf(subNode.subBlockId, childNodeId, thisToString);
-                        }),
-                        getData: () => __awaiter(this, void 0, void 0, function* () { return yield getDataOf(subNode.dataBlockId); }),
-                        toString: () => thisToString,
-                    };
-                });
-            }
-            function getSubNodeOf(nodeId) {
-                const node = nodeMap.get(nodeId);
-                if (node === undefined) {
-                    throw new Error(`nodeId=${nodeId} not found`);
-                }
-                const thisToString = `subNode of nodeId=${nodeId},nidType=${nodeId & 0x1f}`;
-                return {
-                    nodeId: nodeId,
-                    getChildBy: (childNodeId) => __awaiter(this, void 0, void 0, function* () {
-                        return getChildOf(node.subBlockId, childNodeId, thisToString);
-                    }),
-                    getData: () => __awaiter(this, void 0, void 0, function* () { return yield getDataOf(node.blockId); }),
-                    toString: () => thisToString,
-                };
-            }
-            return {
-                nodeId: (ptr.nodeId),
-                getParent: () => getOneNodeBy((ptr.parentNodeId)),
-                getChildren: () => Array.from(nodeMap.values())
-                    .filter(it => it.parentNodeId === ptr.nodeId && it.nodeId !== ptr.nodeId)
-                    .map(it => getOneNodeBy(it.nodeId))
-                    .filter(it => it !== undefined),
-                getSubNode: () => getSubNodeOf(ptr.nodeId),
-                getSiblingNode: (nidType) => getOneNodeBy((nodeId & ~0x1f) | (nidType & 0x1f)),
-            };
-        }
-        ;
-        function getOneNodeByOrError(nodeId) {
-            const node = getOneNodeBy(nodeId);
-            if (node === undefined) {
-                throw new Error(`node ${nodeId} must exist and must be valid`);
-            }
-            return node;
-        }
-        return {
-            getOneNodeBy,
-            getOneNodeByOrError,
-            close: () => api.close(),
-        };
-    });
-}
-exports.openLowPst = openLowPst;
-
-
-/***/ }),
-
-/***/ 8829:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTActivity = void 0;
-const PSTMessage_class_1 = __webpack_require__(9015);
-const OutlookProperties_1 = __webpack_require__(6725);
-class PSTActivity extends PSTMessage_class_1.PSTMessage {
-    /**
-     * Creates an instance of PSTActivity.  Represents Journal entries, class IPM.Activity.
-     * https://msdn.microsoft.com/en-us/library/office/aa204771(v=office.11).aspx
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} descriptorIndexNode
-     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
-     * @memberof PSTActivity
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * Contains the display name of the journaling application (for example, "MSWord"), and is typically a free-form attribute of a journal message, usually a string.
-     * https://msdn.microsoft.com/en-us/library/office/cc839662.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTActivity
-     */
-    get logType() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogType, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Represents the start date and time for the journal message.
-     * https://msdn.microsoft.com/en-us/library/office/cc842339.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTActivity
-     */
-    get logStart() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogStart, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Represents the duration, in minutes, of a journal message.
-     * https://msdn.microsoft.com/en-us/library/office/cc765536.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTActivity
-     */
-    get logDuration() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDuration, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Represents the end date and time for the journal message.
-     * https://msdn.microsoft.com/en-us/library/office/cc839572.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTActivity
-     */
-    get logEnd() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogEnd, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Contains metadata about the journal.
-     * https://msdn.microsoft.com/en-us/library/office/cc815433.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTActivity
-     */
-    get logFlags() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogFlags, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Indicates whether the document was printed during journaling.
-     * https://msdn.microsoft.com/en-us/library/office/cc839873.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTActivity
-     */
-    get isDocumentPrinted() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentPrinted, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Indicates whether the document was saved during journaling.
-     * https://msdn.microsoft.com/en-us/library/office/cc815488.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTActivity
-     */
-    get isDocumentSaved() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentSaved, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Indicates whether the document was sent to a routing recipient during journaling.
-     * https://msdn.microsoft.com/en-us/library/office/cc839558.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTActivity
-     */
-    get isDocumentRouted() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentRouted, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Indicates whether the document was sent by e-mail or posted to a server folder during journaling.
-     * https://msdn.microsoft.com/en-us/library/office/cc815353.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTActivity
-     */
-    get isDocumentPosted() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentPosted, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * Describes the activity that is being recorded.
-     * https://msdn.microsoft.com/en-us/library/office/cc815500.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTActivity
-     */
-    get logTypeDesc() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogTypeDesc, OutlookProperties_1.OutlookProperties.PSETID_Log));
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTActivity
-     */
-    toJSON() {
-        const clone = Object.assign({
-            messageClass: this.messageClass,
-            subject: this.subject,
-            importance: this.importance,
-            transportMessageHeaders: this.transportMessageHeaders,
-            logType: this.logType,
-            logStart: this.logStart,
-            logDuration: this.logDuration,
-            logEnd: this.logEnd,
-            logFlags: this.logFlags,
-            isDocumentPrinted: this.isDocumentPrinted,
-            isDocumentSaved: this.isDocumentSaved,
-            isDocumentRouted: this.isDocumentRouted,
-            isDocumentPosted: this.isDocumentPosted,
-            logTypeDesc: this.logTypeDesc,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTActivity = PSTActivity;
-
-
-/***/ }),
-
-/***/ 9944:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTAppointment = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTMessage_class_1 = __webpack_require__(9015);
-// PSTAppointment is for Calendar items
-class PSTAppointment extends PSTMessage_class_1.PSTMessage {
-    /**
-     *
-     * @internal
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * Specifies if a meeting request should be sent as an iCal message.
-     * https://msdn.microsoft.com/en-us/library/office/cc839802.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get sendAsICAL() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidSendMeetingAsIcal, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Represents the user’s availability for an appointment.
-     * https://msdn.microsoft.com/en-us/library/office/cc841972.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get busyStatus() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidBusyStatus, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * The user is busy.
-     * https://msdn.microsoft.com/en-us/library/office/cc841972.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get showAsBusy() {
-        return this.busyStatus == 2;
-    }
-    /**
-     * Represents the location of an appointment.
-     * https://msdn.microsoft.com/en-us/library/office/cc842419.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get location() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLocation, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Represents the date and time when an appointment begins.
-     * https://msdn.microsoft.com/en-us/library/office/cc839929.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAppointment
-     */
-    get startTime() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentStartWhole, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Represents the date and time that an appointment ends.
-     * https://msdn.microsoft.com/en-us/library/office/cc815864.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAppointment
-     */
-    get endTime() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentEndWhole, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Represents the length of time, in minutes, when an appointment is scheduled.
-     * https://msdn.microsoft.com/en-us/library/office/cc842287.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get duration() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentDuration, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the color to use when displaying the calendar.
-     * https://msdn.microsoft.com/en-us/library/office/cc842274.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get color() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentColor, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies whether or not the event is all day.
-     * https://msdn.microsoft.com/en-us/library/office/cc839901.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get subType() {
-        return (this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentSubType, OutlookProperties_1.OutlookProperties.PSETID_Appointment)) != 0);
-    }
-    /**
-     * Specifies a bit field that describes the state of the object.
-     * https://msdn.microsoft.com/en-us/library/office/cc765762.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get meetingStatus() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentStateFlags, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the response status of an attendee.
-     * https://msdn.microsoft.com/en-us/library/office/cc839923.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get responseStatus() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidResponseStatus, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies whether an appointment message is recurrent.
-     * https://msdn.microsoft.com/en-us/library/office/cc765772.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get isRecurring() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurring, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the date and time within the recurrence pattern that the exception will replace.
-     * https://msdn.microsoft.com/en-us/library/office/cc842450.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAppointment
-     */
-    get recurrenceBase() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidExceptionReplaceTime, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the recurrence type of the recurring series.
-     * https://msdn.microsoft.com/en-us/library/office/cc842135.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get recurrenceType() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurrenceType, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies a description of the recurrence pattern of the calendar object.
-     * https://msdn.microsoft.com/en-us/library/office/cc815733.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get recurrencePattern() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurrencePattern, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the dates and times when a recurring series occurs by using one of the recurrence patterns and ranges that are specified in [MS-OXOCAL].
-     * https://msdn.microsoft.com/en-us/library/office/cc842017.aspx
-     * @readonly
-     * @type {Buffer}
-     * @memberof PSTAppointment
-     */
-    get recurrenceStructure() {
-        return this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentRecur, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Contains a stream that maps to the persisted format of a TZREG structure, which describes the time zone to be used for the start and end time of a recurring appointment or meeting request.
-     * https://msdn.microsoft.com/en-us/library/office/cc815376.aspx
-     * @readonly
-     * @type {Buffer}
-     * @memberof PSTAppointment
-     */
-    get timezone() {
-        return this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTimeZoneStruct, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies a list of all the attendees except for the organizer, including resources and unsendable attendees.
-     * https://msdn.microsoft.com/en-us/library/office/cc815418.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get allAttendees() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAllAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Contains a list of all the sendable attendees who are also required attendees.
-     * https://msdn.microsoft.com/en-us/library/office/cc842502.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get toAttendees() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidToAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Contains a list of all the sendable attendees who are also optional attendees.
-     * https://msdn.microsoft.com/en-us/library/office/cc839636.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get ccAttendees() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidCcAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the sequence number of a Meeting object.
-     * https://msdn.microsoft.com/en-us/library/office/cc765937.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get appointmentSequence() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentSequence, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Is a hosted meeting?
-     * https://msdn.microsoft.com/en-us/library/ee200872(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get isOnlineMeeting() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidConferencingCheck, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the type of the meeting.
-     * https://msdn.microsoft.com/en-us/library/ee158396(v=exchg.80).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get netMeetingType() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidConferencingType, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the directory server to be used.
-     * https://msdn.microsoft.com/en-us/library/ee201516(v=exchg.80).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get netMeetingServer() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidDirectory, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the email address of the organizer.
-     * https://msdn.microsoft.com/en-us/library/ee203317(v=exchg.80).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get netMeetingOrganizerAlias() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidOrganizerAlias, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the document to be launched when the user joins the meeting.
-     * https://msdn.microsoft.com/en-us/library/ee204395(v=exchg.80).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get netMeetingDocumentPathName() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidCollaborateDoc, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * The PidLidNetShowUrl property ([MS-OXPROPS] section 2.175) specifies the URL to be launched when the user joins the meeting
-     * https://msdn.microsoft.com/en-us/library/ee179451(v=exchg.80).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get netShowURL() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidNetShowUrl, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Specifies the date and time at which the meeting-related object was sent.
-     * https://msdn.microsoft.com/en-us/library/ee237112(v=exchg.80).aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAppointment
-     */
-    get attendeeCriticalChange() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAttendeeCriticalChange, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
-    }
-    /**
-     * Indicates that this meeting response is a counter proposal.
-     * https://msdn.microsoft.com/en-us/magazine/cc815846.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get appointmentCounterProposal() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentCounterProposal, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
-    }
-    /**
-     * Indicates whether the user did not include any text in the body of the Meeting Response object.
-     * https://msdn.microsoft.com/en-us/library/ee159822(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAppointment
-     */
-    get isSilent() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidIsSilent, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
-    }
-    /**
-     * Identifies required attendees for the appointment or meeting.
-     * https://msdn.microsoft.com/en-us/library/ee160700(v=exchg.80).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAppointment
-     */
-    get requiredAttendees() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRequiredAttendees, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
-    }
-    /**
-     * Contains the Windows Locale ID of the end-user who created this message.
-     * https://msdn.microsoft.com/en-us/library/ee201602(v=exchg.80).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAppointment
-     */
-    get localeId() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PidTagMessageLocaleId);
-    }
-    /**
-     * JSON stringify the object properties.  Large fields (like body) aren't included.
-     * @returns {string}
-     * @memberof PSTAppointment
-     */
-    toJSON() {
-        const clone = Object.assign({
-            messageClass: this.messageClass,
-            subject: this.subject,
-            importance: this.importance,
-            transportMessageHeaders: this.transportMessageHeaders,
-            sendAsICAL: this.sendAsICAL,
-            busyStatus: this.busyStatus,
-            showAsBusy: this.showAsBusy,
-            location: this.location,
-            startTime: this.startTime,
-            endTime: this.endTime,
-            duration: this.duration,
-            color: this.color,
-            subType: this.subType,
-            meetingStatus: this.meetingStatus,
-            isRecurring: this.isRecurring,
-            recurrenceBase: this.recurrenceBase,
-            recurrenceType: this.recurrenceType,
-            recurrencePattern: this.recurrencePattern,
-            recurrenceStructure: this.recurrenceStructure,
-            timezone: this.timezone,
-            allAttendees: this.allAttendees,
-            toAttendees: this.toAttendees,
-            ccAttendees: this.ccAttendees,
-            appointmentSequence: this.appointmentSequence,
-            isOnlineMeeting: this.isOnlineMeeting,
-            netMeetingType: this.netMeetingType,
-            netMeetingServer: this.netMeetingServer,
-            netMeetingOrganizerAlias: this.netMeetingOrganizerAlias,
-            netMeetingDocumentPathName: this.netMeetingDocumentPathName,
-            attendeeCriticalChange: this.attendeeCriticalChange,
-            appointmentCounterProposal: this.appointmentCounterProposal,
-            isSilent: this.isSilent,
-            requiredAttendees: this.requiredAttendees,
-            localeId: this.localeId,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTAppointment = PSTAppointment;
-
-
-/***/ }),
-
-/***/ 7886:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTAttachment = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PropertyTypeObject_1 = __webpack_require__(8130);
-const PSTObject_class_1 = __webpack_require__(3563);
-// Class containing attachment information.
-class PSTAttachment extends PSTObject_class_1.PSTObject {
-    /**
-     * Creates an instance of PSTAttachment.
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {Map<number, PSTDescriptorItem>} localDescriptorItems
-     * @memberof PSTAttachment
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * The PR_ATTACH_SIZE property contains the sum, in bytes, of the sizes of all properties on an attachment.
-     * https://msdn.microsoft.com/en-us/library/gg156074(v=winembedded.70).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get size() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_SIZE);
-    }
-    /**
-     * Contains the creation date and time of a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc765677.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAttachment
-     */
-    get creationTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CREATION_TIME);
-    }
-    /**
-     * Contains the date and time when the object or subobject was last modified.
-     * https://msdn.microsoft.com/en-us/library/office/cc815689.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTAttachment
-     */
-    get modificationTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_MODIFICATION_TIME);
-    }
-    /**
-     * Get an embedded message.
-     * @readonly
-     * @type {PSTMessage}
-     * @memberof PSTAttachment
-     */
-    getEmbeddedPSTMessage() {
-        var _a, _b;
-        return __awaiter(this, void 0, void 0, function* () {
-            const attachMethod = (_a = this._propertyFinder.findByKey(0x3705)) === null || _a === void 0 ? void 0 : _a.value;
-            try {
-                if ( true
-                    && typeof attachMethod === 'number'
-                    && attachMethod == PSTAttachment.ATTACHMENT_METHOD_EMBEDDED) {
-                    const attachDataBinary = (_b = this._propertyFinder.findByKey(0x3701)) === null || _b === void 0 ? void 0 : _b.value;
-                    if (false) {}
-                    else if (attachDataBinary instanceof ArrayBuffer) {
-                        // PT_BINARY
-                        throw new Error("Currently getEmbeddedPSTMessage and ATTACHMENT_METHOD_EMBEDDED need attachDataBinary to be PT_OBJECT");
-                    }
-                    else if (attachDataBinary instanceof PropertyTypeObject_1.PropertyTypeObject) {
-                        const { subNodeId } = attachDataBinary;
-                        const subNode = yield this._subNode.getChildBy(subNodeId);
-                        if (subNode === undefined) {
-                            throw new Error(`childNodeId=0x${subNodeId.toString(16)}`
-                                + ` of ${this._subNode} not found`);
-                        }
-                        return yield this._rootProvider.getItemOf(this._node, subNode, undefined);
-                    }
-                }
-            }
-            catch (err) {
-                console.error('PSTAttachment::embeddedPSTMessage createAppropriatePSTMessageObject failed\n' +
-                    err);
-                throw err;
-            }
-            return null;
-        });
-    }
-    /**
-     * Get attachment content as binary data
-     */
-    get fileData() {
-        const attachmentDataObject = this._propertyFinder.findByKey(OutlookProperties_1.OutlookProperties.PR_ATTACH_DATA_BIN);
-        if (attachmentDataObject !== undefined) {
-            const { value } = attachmentDataObject;
-            if (value instanceof ArrayBuffer) {
-                return value;
-            }
-        }
-        return undefined;
-    }
-    /**
-     * Size of the attachment file itself.
-     * https://msdn.microsoft.com/en-us/library/gg154634(v=winembedded.70).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get filesize() {
-        const attachmentDataObject = this._propertyFinder.findByKey(OutlookProperties_1.OutlookProperties.PR_ATTACH_DATA_BIN);
-        if (attachmentDataObject !== undefined) {
-            const { value } = attachmentDataObject;
-            if (value instanceof ArrayBuffer) {
-                return value.byteLength;
-            }
-            else if (value instanceof PropertyTypeObject_1.PropertyTypeObject) {
-                return value.size;
-            }
-        }
-        return 0;
-    }
-    /**
-     * Contains an attachment's base file name and extension, excluding path.
-     * https://msdn.microsoft.com/en-us/library/office/cc842517.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get filename() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FILENAME);
-    }
-    /**
-     * Contains a MAPI-defined constant representing the way the contents of an attachment can be accessed.
-     * https://msdn.microsoft.com/en-us/library/office/cc815439.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get attachMethod() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_METHOD);
-    }
-    /**
-     * Contains a number that uniquely identifies the attachment within its parent message.
-     * https://msdn.microsoft.com/en-us/library/office/cc841969.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get attachNum() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_NUM);
-    }
-    /**
-     * Contains an attachment's long filename and extension, excluding path.
-     * https://msdn.microsoft.com/en-us/library/office/cc842157.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get longFilename() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_LONG_FILENAME);
-    }
-    /**
-     * Contains an attachment's fully-qualified path and filename.
-     * https://msdn.microsoft.com/en-us/library/office/cc839889.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get pathname() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_PATHNAME);
-    }
-    /**
-     * Contains an offset, in characters, to use in rendering an attachment within the main message text.
-     * https://msdn.microsoft.com/en-us/library/office/cc842381.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get renderingPosition() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RENDERING_POSITION);
-    }
-    /**
-     * Contains an attachment's fully-qualified long path and filename.
-     * https://msdn.microsoft.com/en-us/library/office/cc815443.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get longPathname() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_LONG_PATHNAME);
-    }
-    /**
-     * Contains formatting information about a Multipurpose Internet Mail Extensions (MIME) attachment.
-     * https://msdn.microsoft.com/en-us/library/office/cc842516.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get mimeTag() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_MIME_TAG);
-    }
-    /**
-     * Contains the MIME sequence number of a MIME message attachment.
-     * https://msdn.microsoft.com/en-us/library/office/cc963256.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTAttachment
-     */
-    get mimeSequence() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_MIME_SEQUENCE);
-    }
-    /**
-     * Contains the content identification header of a Multipurpose Internet Mail Extensions (MIME) message attachment.
-     * https://msdn.microsoft.com/en-us/library/office/cc765868.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTAttachment
-     */
-    get contentId() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_CONTENT_ID);
-    }
-    /**
-     * Indicates that this attachment is not available to HTML rendering applications and should be ignored in Multipurpose Internet Mail Extensions (MIME) processing.
-     * https://msdn.microsoft.com/en-us/library/office/cc765876.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAttachment
-     */
-    get isAttachmentInvisibleInHtml() {
-        const actionFlag = this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FLAGS);
-        return (actionFlag & 0x1) > 0;
-    }
-    /**
-     * Indicates that this attachment is not available to applications rendering in Rich Text Format (RTF) and should be ignored by MAPI.
-     * https://msdn.microsoft.com/en-us/library/office/cc765876.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTAttachment
-     */
-    get isAttachmentInvisibleInRTF() {
-        const actionFlag = this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FLAGS);
-        return (actionFlag & 0x2) > 0;
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTAttachment
-     */
-    toJSON() {
-        const clone = Object.assign({
-            size: this.size,
-            creationTime: this.creationTime,
-            modificationTime: this.modificationTime,
-            filename: this.filename,
-            attachMethod: this.attachMethod,
-            attachNum: this.attachNum,
-            longFilename: this.longFilename,
-            pathname: this.pathname,
-            renderingPosition: this.renderingPosition,
-            longPathname: this.longPathname,
-            mimeTag: this.mimeTag,
-            mimeSequence: this.mimeSequence,
-            contentId: this.contentId,
-            isAttachmentInvisibleInHtml: this.isAttachmentInvisibleInHtml,
-            isAttachmentInvisibleInRTF: this.isAttachmentInvisibleInRTF,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTAttachment = PSTAttachment;
-PSTAttachment.ATTACHMENT_METHOD_NONE = 0;
-PSTAttachment.ATTACHMENT_METHOD_BY_VALUE = 1;
-PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE = 2;
-PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE_RESOLVE = 3;
-PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE_ONLY = 4;
-PSTAttachment.ATTACHMENT_METHOD_EMBEDDED = 5;
-PSTAttachment.ATTACHMENT_METHOD_OLE = 6;
-
-
-/***/ }),
-
-/***/ 672:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTContact = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTMessage_class_1 = __webpack_require__(9015);
-class PSTContact extends PSTMessage_class_1.PSTMessage {
-    /**
-     *
-     * @internal
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * Contains the recipient's account name.
-     * https://msdn.microsoft.com/en-us/library/office/cc842401.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get account() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ACCOUNT);
-    }
-    /**
-     * Contains a telephone number that the message recipient can use to reach the sender.
-     * https://msdn.microsoft.com/en-us/library/office/cc839943.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get callbackTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CALLBACK_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains a generational abbreviation that follows the full name of the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc842136.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get generation() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GENERATION);
-    }
-    /**
-     * Contains the first or given name of the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc815351.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get givenName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GIVEN_NAME);
-    }
-    /**
-     * Contains a government identifier for the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc815890.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get governmentIdNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GOVERNMENT_ID_NUMBER);
-    }
-    /**
-     * Contains the primary telephone number of the recipient's place of business.
-     * https://msdn.microsoft.com/en-us/library/office/cc839937.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the primary telephone number of the recipient's home.
-     * https://msdn.microsoft.com/en-us/library/office/cc815389.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the initials for parts of the full name of the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc839843.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get initials() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INITIALS);
-    }
-    /**
-     * Contains a keyword that identifies the recipient to the recipient's system administrator.
-     * https://msdn.microsoft.com/en-us/library/office/cc842250.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get keyword() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_KEYWORD);
-    }
-    /**
-     * Contains a value that indicates the language in which the messaging user is writing messages.
-     * https://msdn.microsoft.com/en-us/library/office/cc839724.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get language() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LANGUAGE);
-    }
-    /**
-     * Contains the location of the recipient in a format that is useful to the recipient's organization.
-     * https://msdn.microsoft.com/en-us/library/office/cc815567.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get location() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LOCATION);
-    }
-    /**
-     * Contains the common name of the message handling system.
-     * https://msdn.microsoft.com/en-us/library/office/cc842474.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get mhsCommonName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MHS_COMMON_NAME);
-    }
-    /**
-     * Contains an organizational ID number for the contact, such as an employee ID number.
-     * https://msdn.microsoft.com/en-us/library/office/cc765672.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get organizationalIdNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORGANIZATIONAL_ID_NUMBER);
-    }
-    /**
-     * Contains the last or surname of the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc765704.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get surname() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SURNAME);
-    }
-    /**
-     * Contains the original display name for an entry copied from an address book to a personal address book or other writable address book.
-     * https://msdn.microsoft.com/en-us/library/office/cc765709.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get originalDisplayName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_NAME);
-    }
-    /**
-     * Contains the recipient's postal address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842549.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get postalAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POSTAL_ADDRESS);
-    }
-    /**
-     * Contains the recipient's company name.
-     * https://msdn.microsoft.com/en-us/library/office/cc842192.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get companyName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PT_UNICODE);
-    }
-    /**
-     * Contains the recipient's job title.
-     * https://msdn.microsoft.com/en-us/library/office/cc815831.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get title() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TITLE);
-    }
-    /**
-     * Contains a name for the department in which the recipient works.
-     * https://msdn.microsoft.com/en-us/library/office/cc839825.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get departmentName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DEPARTMENT_NAME);
-    }
-    /**
-     * Contains the recipient's office location.
-     * https://msdn.microsoft.com/en-us/library/office/cc842269.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get officeLocation() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OFFICE_LOCATION);
-    }
-    /**
-     * Contains the recipient's primary telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc839969.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get primaryTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains a secondary telephone number at the recipient's place of business.
-     * https://msdn.microsoft.com/en-us/library/office/cc841990.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get business2TelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS2_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the recipient's cellular telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc839798.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get mobileTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MOBILE_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the recipient's radio telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc839806.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get radioTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RADIO_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the recipient's car telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc815394.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get carTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CAR_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains an alternate telephone number for the recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc839561.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains a recipient's display name in a secure form that cannot be changed.
-     * https://msdn.microsoft.com/en-us/library/office/cc815723.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get transmittableDisplayName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TRANSMITABLE_DISPLAY_NAME);
-    }
-    /**
-     * Contains the recipient's pager telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc765824.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get pagerTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PAGER_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the telephone number of the recipient's primary fax machine.
-     * https://msdn.microsoft.com/en-us/library/office/cc815713.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get primaryFaxNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_FAX_NUMBER);
-    }
-    /**
-     * Contains the telephone number of the recipient's business fax machine.
-     * https://msdn.microsoft.com/en-us/library/office/cc765799.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessFaxNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_FAX_NUMBER);
-    }
-    /**
-     * Contains the telephone number of the recipient's home fax machine.
-     * https://msdn.microsoft.com/en-us/library/office/cc842109.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeFaxNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_FAX_NUMBER);
-    }
-    /**
-     * Contains the name of the recipient's country/region.
-     * https://msdn.microsoft.com/en-us/library/office/cc842494.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessAddressCountry() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COUNTRY);
-    }
-    /**
-     * Contains the name of the recipient's locality, such as the town or city.
-     * https://msdn.microsoft.com/en-us/library/office/cc815711.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessAddressCity() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LOCALITY);
-    }
-    /**
-     * Contains the name of the recipient's state or province.
-     * https://msdn.microsoft.com/en-us/library/office/cc839544.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessAddressStateOrProvince() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_STATE_OR_PROVINCE);
-    }
-    /**
-     * Contains the recipient's street address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765810.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessAddressStreet() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_STREET_ADDRESS);
-    }
-    /**
-     * Contains the postal code for the recipient's postal address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839851.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessPostalCode() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POSTAL_CODE);
-    }
-    /**
-     * Contains the number or identifier of the recipient's post office box.
-     * https://msdn.microsoft.com/en-us/library/office/cc815522.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessPoBox() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POST_OFFICE_BOX);
-    }
-    /**
-     * Contains the recipient's telex number.
-     * https://msdn.microsoft.com/en-us/library/office/cc765894.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get telexNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TELEX_NUMBER);
-    }
-    /**
-     * Contains the recipient's ISDN-capable telephone number.
-     * https://msdn.microsoft.com/en-us/library/office/cc765863.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get isdnNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ISDN_NUMBER);
-    }
-    /**
-     * Contains the telephone number of the recipient's administrative assistant.
-     * https://msdn.microsoft.com/en-us/library/office/cc840012.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get assistantTelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ASSISTANT_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains a secondary telephone number at the recipient's home.
-     * https://msdn.microsoft.com/en-us/library/office/cc815540.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get home2TelephoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME2_TELEPHONE_NUMBER);
-    }
-    /**
-     * Contains the name of the recipient's administrative assistant.
-     * https://msdn.microsoft.com/en-us/library/office/cc815319.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get assistant() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ASSISTANT);
-    }
-    /**
-     * Contains the names of the hobbies of the messaging user.
-     * https://msdn.microsoft.com/en-us/library/office/cc815391.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get hobbies() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOBBIES);
-    }
-    /**
-     * Contains the middle name of a contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc815329.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get middleName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MIDDLE_NAME);
-    }
-    /**
-     * Contains the display name prefix (such as Miss, Mr., Mrs.) for the messaging user.
-     * https://msdn.microsoft.com/en-us/library/office/cc765538.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get displayNamePrefix() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME_PREFIX);
-    }
-    /**
-     * Contains the profession of the user.
-     * https://msdn.microsoft.com/en-us/library/office/cc765792.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get profession() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PROFESSION);
-    }
-    /**
-     * Contains the name of the mail user's referral.
-     * https://msdn.microsoft.com/en-us/library/office/cc765803.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get preferredByName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_REFERRED_BY_NAME);
-    }
-    /**
-     * Contains the user’s spouse name.
-     * https://msdn.microsoft.com/en-us/library/office/cc765832.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get spouseName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SPOUSE_NAME);
-    }
-    /**
-     * Contains the name of the network used to transmit the message.
-     * https://msdn.microsoft.com/en-us/library/office/cc839633.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get computerNetworkName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMPUTER_NETWORK_NAME);
-    }
-    /**
-     * Contains the contact’s customer ID number.
-     * https://msdn.microsoft.com/en-us/library/office/cc842178.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get customerId() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CUSTOMER_ID);
-    }
-    /**
-     * Contains the telephone number for the contact’s text telephone (TTY) or telecommunication device for the deaf (TDD).
-     * https://msdn.microsoft.com/en-us/library/office/cc765580.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get ttytddPhoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TTYTDD_PHONE_NUMBER);
-    }
-    /**
-     * Contains the contact’s File Transfer Protocol (FTP) URL. FTP is a protocol that is used to transfer data, as specified in [RFC959].
-     * https://msdn.microsoft.com/en-us/library/office/cc839830.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get ftpSite() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_FTP_SITE);
-    }
-    /**
-     * Contains the name of the recipient's manager.
-     * https://msdn.microsoft.com/en-us/library/office/cc842009.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get managerName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MANAGER_NAME);
-    }
-    /**
-     * Contains the nickname of the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc765603.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get nickname() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_NICKNAME);
-    }
-    /**
-     * Contains the URL of a user's personal home page.
-     * https://msdn.microsoft.com/en-us/library/office/cc765751.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get personalHomePage() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PERSONAL_HOME_PAGE);
-    }
-    /**
-     * Contains the URL of the home page for the business.
-     * https://msdn.microsoft.com/en-us/library/office/cc842385.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get businessHomePage() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_HOME_PAGE);
-    }
-    /**
-     * Get the note associated with the contact.
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get note() {
-        return this.getStringItem(0x6619);
-    }
-    /**
-     * Get a named string item from the map
-     * @param {number} key
-     * @returns {string}
-     * @memberof PSTContact
-     */
-    getNamedStringItem(key) {
-        const id = this._rootProvider.getNameToIdMapItem(key, OutlookProperties_1.OutlookProperties.PSETID_Address);
-        if (id != -1) {
-            return this.getStringItem(id);
-        }
-        return '';
-    }
-    /**
-     * Contains the main telephone number for a company
-     * https://msdn.microsoft.com/en-us/library/office/cc839651.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get companyMainPhoneNumber() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMPANY_MAIN_PHONE_NUMBER);
-    }
-    /**
-     * Contains a list of names of children
-     * https://msdn.microsoft.com/en-us/library/office/cc839533.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get childrensNames() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CHILDRENS_NAMES);
-    }
-    /**
-     * Contains the city for the recipient's home address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815582.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressCity() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_CITY);
-    }
-    /**
-     * Contains the county in a contact's address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842548.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressCountry() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_COUNTRY);
-    }
-    /**
-     * Contains the postal code for the user's home address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815880.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressPostalCode() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_POSTAL_CODE);
-    }
-    /**
-     * Contains the state or province portion of a user's address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839958.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressStateOrProvince() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_STATE_OR_PROVINCE);
-    }
-    /**
-     * Contains the street portion of a user's address.
-     * https://msdn.microsoft.com/en-us/library/office/cc841997.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressStreet() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_STREET);
-    }
-    /**
-     * Contains the post office box information for a user's address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842440.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddressPostOfficeBox() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_POST_OFFICE_BOX);
-    }
-    /**
-     * Contains the name of the mail user's other locality, such as the town or city.
-     * https://msdn.microsoft.com/en-us/library/office/cc765881.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressCity() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_CITY);
-    }
-    /**
-     * Contains the mail user's other country/region.
-     * https://msdn.microsoft.com/en-us/library/office/cc765814.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressCountry() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_CITY);
-    }
-    /**
-     * Contains the postal code for the mail user's other postal address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842261.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressPostalCode() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_POSTAL_CODE);
-    }
-    /**
-     * Contains the name of state or province used in the other address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815782.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressStateOrProvince() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_STATE_OR_PROVINCE);
-    }
-    /**
-     * Contains the mail user's other street address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839546.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressStreet() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_STREET);
-    }
-    /**
-     * Contains the post office box for a contact's other address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842396.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddressPostOfficeBox() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_POST_OFFICE_BOX);
-    }
-    ///////////////////////////////////////////////////
-    // Below are the values from the name to id map...
-    ///////////////////////////////////////////////////
-    /**
-     * Specifies the name under which the contact is filed when displaying a list of contacts.
-     * https://msdn.microsoft.com/en-us/library/office/cc842002.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fileUnder() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFileUnder);
-    }
-    /**
-     * Specifies the complete address of the contact’s home address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839539.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get homeAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidHomeAddress);
-    }
-    /**
-     * Specifies the contact's complete work address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815905.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddress);
-    }
-    /**
-     * Specifies the complete address of the contact’s other address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815383.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get otherAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidOtherAddress);
-    }
-    /**
-     * Specifies which physical address is the contact’s mailing address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815430.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTContact
-     */
-    get postalAddressId() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidPostalAddressId, OutlookProperties_1.OutlookProperties.PSETID_Address));
-    }
-    /**
-     * Specifies the contact’s business Web page URL.
-     * https://msdn.microsoft.com/en-us/library/office/cc842001.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get html() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidHtml);
-    }
-    /**
-     * Specifies the street portion of the contact's work mailing address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815537.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressStreet() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressStreet);
-    }
-    /**
-     * Specifies the city or locality portion of the contact's work address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765923.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressCity() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressCity);
-    }
-    /**
-     * Specifies the state or province portion of the contact's work mailing address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842152.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressState() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressState);
-    }
-    /**
-     * Specifies the postal code (ZIP code) portion of the contact's work address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842066.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressPostalCode() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressPostalCode);
-    }
-    /**
-     * Specifies the country or region portion of the contact's work address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765698.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressCountry() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressCountry);
-    }
-    /**
-     * Specifies the post office box portion of the contact's work.
-     * https://msdn.microsoft.com/en-us/library/office/cc815563.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get workAddressPostOfficeBox() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressPostOfficeBox);
-    }
-    /**
-     * Specifies the contact’s instant messaging address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815607.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get instantMessagingAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidInstantMessagingAddress);
-    }
-    /**
-     * Specifies the user-readable display name for the first e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815460.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email1DisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1DisplayName);
-    }
-    /**
-     * Specifies the address type of the first e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815570.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email1AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1AddressType);
-    }
-    /**
-     * Specifies the first e-mail address of the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc842050.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email1EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1EmailAddress);
-    }
-    /**
-     * Specifies the first display name that corresponds to the e-mail address that is specified for the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc815564.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email1OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1OriginalDisplayName);
-    }
-    /**
-     * Specifies the user-readable display name for the second e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839675.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email2DisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2DisplayName);
-    }
-    /**
-     * Specifies the address type of the second e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815361.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email2AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2DisplayName);
-    }
-    /**
-     * Specifies the second e-mail address of the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc842205.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email2EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2EmailAddress);
-    }
-    /**
-     * Specifies the second display name that corresponds to the e-mail address specified for the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc765618.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email2OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2OriginalDisplayName);
-    }
-    /**
-     * Specifies the user-readable display name for the third e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc815669.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email3DisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3DisplayName);
-    }
-    /**
-     * Specifies the address type of the third e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842438.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email3AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3AddressType);
-    }
-    /**
-     * Specifies the third e-mail address of the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc815504.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email3EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3EmailAddress);
-    }
-    /**
-     * Specifies the third display name that corresponds to the e-mail address that is specified for the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc815833.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get email3OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3OriginalDisplayName);
-    }
-    /**
-     * Specifies the address type for the business fax address for a contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc842026.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax1AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1AddressType);
-    }
-    /**
-     * Specifies the e-mail address of the contact’s business fax.
-     * https://msdn.microsoft.com/en-us/library/office/cc765813.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax1EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1EmailAddress);
-    }
-    /**
-     * Specifies the original display name of the contact’s business fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765694.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax1OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1OriginalDisplayName);
-    }
-    /**
-     * Specifies the address type for the contact’s home fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839741.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax2AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2AddressType);
-    }
-    /**
-     * Specifies the e-mail address of the contact’s home fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765668.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax2EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2EmailAddress);
-    }
-    /**
-     * Specifies the original display name of the contact’s home fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842101.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax2OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2OriginalDisplayName);
-    }
-    /**
-     * Specifies the address type for the other contact’s fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839752.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax3AddressType() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3AddressType);
-    }
-    /**
-     * Specifies the email address of the contact’s other fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842217.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax3EmailAddress() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3EmailAddress);
-    }
-    /**
-     * Specifies the original display name of the contact’s other fax address.
-     * https://msdn.microsoft.com/en-us/library/office/cc765682.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get fax3OriginalDisplayName() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3OriginalDisplayName);
-    }
-    /**
-     * Specifies a URL path from which a client can retrieve free/busy information for the contact as an iCal file, as specified in [MS-OXCICAL].
-     * https://msdn.microsoft.com/en-us/library/office/cc765766.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTContact
-     */
-    get freeBusyLocation() {
-        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFreeBusyLocation);
-    }
-    /**
-     * Contains the birthday of the contact.
-     * https://msdn.microsoft.com/en-us/library/office/cc842301.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTContact
-     */
-    get birthday() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PidTagBirthday);
-    }
-    /**
-     * Contains the date of a user's wedding anniversary.
-     * https://msdn.microsoft.com/en-us/library/office/cc842132.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTContact
-     */
-    get anniversary() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PidTagWeddingAnniversary);
-    }
-    /**
-     * Specifies the phonetic pronunciation of the surname of the contact.
-     */
-    get yomiLastName() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiLastName, OutlookProperties_1.OutlookProperties.PSETID_Address));
-    }
-    /**
-     * Specifies the phonetic pronunciation of the contact's given name.
-     */
-    get yomiFirstName() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiFirstName, OutlookProperties_1.OutlookProperties.PSETID_Address));
-    }
-    /**
-     * Specifies the phonetic pronunciation of the contact's company name.
-     */
-    get yomiCompanyName() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiCompanyName, OutlookProperties_1.OutlookProperties.PSETID_Address));
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTContact
-     */
-    toJSON() {
-        const clone = Object.assign({
-            messageClass: this.messageClass,
-            subject: this.subject,
-            importance: this.importance,
-            transportMessageHeaders: this.transportMessageHeaders,
-            account: this.account,
-            callbackTelephoneNumber: this.callbackTelephoneNumber,
-            generation: this.generation,
-            givenName: this.givenName,
-            governmentIdNumber: this.governmentIdNumber,
-            businessTelephoneNumber: this.businessTelephoneNumber,
-            homeTelephoneNumber: this.homeTelephoneNumber,
-            initials: this.initials,
-            keyword: this.keyword,
-            language: this.language,
-            location: this.location,
-            mhsCommonName: this.mhsCommonName,
-            organizationalIdNumber: this.organizationalIdNumber,
-            surname: this.surname,
-            originalDisplayName: this.originalDisplayName,
-            postalAddress: this.postalAddress,
-            companyName: this.companyName,
-            title: this.title,
-            departmentName: this.departmentName,
-            officeLocation: this.officeLocation,
-            primaryTelephoneNumber: this.primaryTelephoneNumber,
-            business2TelephoneNumber: this.business2TelephoneNumber,
-            mobileTelephoneNumber: this.mobileTelephoneNumber,
-            radioTelephoneNumber: this.radioTelephoneNumber,
-            carTelephoneNumber: this.carTelephoneNumber,
-            otherTelephoneNumber: this.otherTelephoneNumber,
-            transmittableDisplayName: this.transmittableDisplayName,
-            pagerTelephoneNumber: this.pagerTelephoneNumber,
-            primaryFaxNumber: this.primaryFaxNumber,
-            businessFaxNumber: this.businessFaxNumber,
-            homeFaxNumber: this.homeFaxNumber,
-            businessAddressCountry: this.businessAddressCountry,
-            businessAddressCity: this.businessAddressCity,
-            businessAddressStateOrProvince: this.businessAddressStateOrProvince,
-            businessAddressStreet: this.businessAddressStreet,
-            businessPostalCode: this.businessPostalCode,
-            businessPoBox: this.businessPoBox,
-            telexNumber: this.telexNumber,
-            isdnNumber: this.isdnNumber,
-            assistantTelephoneNumber: this.assistantTelephoneNumber,
-            home2TelephoneNumber: this.home2TelephoneNumber,
-            assistant: this.assistant,
-            hobbies: this.hobbies,
-            middleName: this.middleName,
-            displayNamePrefix: this.displayNamePrefix,
-            profession: this.profession,
-            preferredByName: this.preferredByName,
-            spouseName: this.spouseName,
-            computerNetworkName: this.computerNetworkName,
-            customerId: this.customerId,
-            ttytddPhoneNumber: this.ttytddPhoneNumber,
-            ftpSite: this.ftpSite,
-            managerName: this.managerName,
-            nickname: this.nickname,
-            personalHomePage: this.personalHomePage,
-            businessHomePage: this.businessHomePage,
-            companyMainPhoneNumber: this.companyMainPhoneNumber,
-            childrensNames: this.childrensNames,
-            homeAddressCity: this.homeAddressCity,
-            homeAddressCountry: this.homeAddressCountry,
-            homeAddressPostalCode: this.homeAddressPostalCode,
-            homeAddressStateOrProvince: this.homeAddressStateOrProvince,
-            homeAddressStreet: this.homeAddressStreet,
-            homeAddressPostOfficeBox: this.homeAddressPostOfficeBox,
-            otherAddressCity: this.otherAddressCity,
-            otherAddressCountry: this.otherAddressCountry,
-            otherAddressPostalCode: this.otherAddressPostalCode,
-            otherAddressStateOrProvince: this.otherAddressStateOrProvince,
-            otherAddressStreet: this.otherAddressStreet,
-            otherAddressPostOfficeBox: this.otherAddressPostOfficeBox,
-            fileUnder: this.fileUnder,
-            homeAddress: this.homeAddress,
-            workAddress: this.workAddress,
-            otherAddress: this.otherAddress,
-            postalAddressId: this.postalAddressId,
-            html: this.html,
-            workAddressStreet: this.workAddressStreet,
-            workAddressCity: this.workAddressCity,
-            workAddressState: this.workAddressState,
-            workAddressPostalCode: this.workAddressPostalCode,
-            workAddressCountry: this.workAddressCountry,
-            workAddressPostOfficeBox: this.workAddressPostOfficeBox,
-            instantMessagingAddress: this.instantMessagingAddress,
-            email1DisplayName: this.email1DisplayName,
-            email1AddressType: this.email1AddressType,
-            email1EmailAddress: this.email1EmailAddress,
-            email1OriginalDisplayName: this.email1OriginalDisplayName,
-            email2DisplayName: this.email2DisplayName,
-            email2AddressType: this.email2AddressType,
-            email2EmailAddress: this.email2EmailAddress,
-            email2OriginalDisplayName: this.email2OriginalDisplayName,
-            email3DisplayName: this.email3DisplayName,
-            email3AddressType: this.email3AddressType,
-            email3EmailAddress: this.email3EmailAddress,
-            email3OriginalDisplayName: this.email3OriginalDisplayName,
-            fax1AddressType: this.fax1AddressType,
-            fax1EmailAddress: this.fax1EmailAddress,
-            fax1OriginalDisplayName: this.fax1OriginalDisplayName,
-            fax2AddressType: this.fax2AddressType,
-            fax2EmailAddress: this.fax2EmailAddress,
-            fax2OriginalDisplayName: this.fax2OriginalDisplayName,
-            fax3AddressType: this.fax3AddressType,
-            fax3EmailAddress: this.fax3EmailAddress,
-            fax3OriginalDisplayName: this.fax3OriginalDisplayName,
-            freeBusyLocation: this.freeBusyLocation,
-            birthday: this.birthday,
-            anniversary: this.anniversary,
-            yomiLastName: this.yomiLastName,
-            yomiFirstName: this.yomiFirstName,
-            yomiCompanyName: this.yomiCompanyName,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTContact = PSTContact;
-
-
-/***/ }),
-
-/***/ 7994:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTFile = void 0;
-const PSTFolder_class_1 = __webpack_require__(2158);
-const PSTMessageStore_class_1 = __webpack_require__(8521);
-const PSTUtil_class_1 = __webpack_require__(8391);
-const NodeMap_class_1 = __webpack_require__(7420);
-const PAUtil_1 = __webpack_require__(3825);
-const PHUtil_1 = __webpack_require__(9864);
-const PropertyContextUtil_1 = __webpack_require__(6918);
-const PropertyValueResolverV1_1 = __webpack_require__(2961);
-const iconv_lite_1 = __importDefault(__webpack_require__(4914));
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-class PSTFile {
-    /**
-     * Creates an instance of PSTFile.  File is opened in constructor.
-     * @internal
-     * @param {string} fileName
-     * @memberof PSTFile
-     */
-    constructor(store, nodeMap, opts) {
-        PSTFile.nodeMap = nodeMap;
-        this._store = store;
-        this._resolver = new PropertyValueResolverV1_1.PropertyValueResolverV1((array) => __awaiter(this, void 0, void 0, function* () {
-            return iconv_lite_1.default.decode(Buffer.from(array), (opts && opts.ansiEncoding) || "latin1");
-        }));
-    }
-    /**
-     * Close the file.
-     * @memberof PSTFile
-     */
-    close() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this._store.close();
-        });
-    }
-    /**
-     * Get name to ID map item.
-     * @param {number} key
-     * @param {number} idx
-     * @returns {number}
-     * @memberof PSTFile
-     */
-    getNameToIdMapItem(key, idx) {
-        return PSTFile.nodeMap.getId(key, idx);
-    }
-    /**
-     * Get public string to id map item.
-     * @static
-     * @param {string} key
-     * @returns {number}
-     * @memberof PSTFile
-     */
-    static getPublicStringToIdMapItem(key) {
-        return PSTFile.nodeMap.getId(key);
-    }
-    /**
-     * Get property name from id.
-     * @static
-     * @param {number} propertyId
-     * @param {boolean} bNamed
-     * @returns {string}
-     * @memberof PSTFile
-     */
-    static getPropertyName(propertyId, bNamed) {
-        return PSTUtil_class_1.PSTUtil.propertyName.get(propertyId);
-    }
-    /**
-     * Get name to id map key.
-     * @static
-     * @param {number} propId
-     * @returns {long}
-     * @memberof PSTFile
-     */
-    static getNameToIdMapKey(propId) {
-        return PSTFile.nodeMap.getNumericName(propId);
-    }
-    /**
-     * Get the message store of the PST file.  Note that this doesn't really
-     * have much information, better to look under the root folder.
-     * @returns {PSTMessageStore}
-     * @memberof PSTFile
-     */
-    getMessageStore() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const node = this._store.getOneNodeBy(PSTFile.MESSAGE_STORE_DESCRIPTOR_IDENTIFIER);
-            if (node === undefined) {
-                throw new Error("MESSAGE_STORE_DESCRIPTOR not found");
-            }
-            const heap = yield (0, PHUtil_1.getHeapFrom)(node.getSubNode());
-            const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, this._resolver);
-            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield pc.list());
-            return new PSTMessageStore_class_1.PSTMessageStore(this.getRootProvider(), node, node.getSubNode(), propertyFinder);
-        });
-    }
-    getFolderOf(node) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const heap = yield (0, PHUtil_1.getHeapFrom)(node.getSubNode());
-            const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, this._resolver);
-            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield pc.list());
-            const output = new PSTFolder_class_1.PSTFolder(this.getRootProvider(), node, node.getSubNode(), propertyFinder);
-            return output;
-        });
-    }
-    getItemOf(node, subNode, propertyFinder) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield PSTUtil_class_1.PSTUtil.createAppropriatePSTMessageObject(this.getRootProvider(), node, subNode, this._resolver, propertyFinder);
-        });
-    }
-    /**
-     * Get the root folder for the PST file
-     * @returns {PSTFolder}
-     * @memberof PSTFile
-     */
-    getRootFolder() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const node = this._store.getOneNodeBy(PSTFile.ROOT_FOLDER_DESCRIPTOR_IDENTIFIER);
-            if (node === undefined) {
-                throw new Error("ROOT_FOLDER_DESCRIPTOR not found");
-            }
-            return yield this.getFolderOf(node);
-        });
-    }
-    getRootProvider() {
-        return {
-            resolver: this._resolver,
-            getNameToIdMapItem: this.getNameToIdMapItem.bind(this),
-            getItemOf: this.getItemOf.bind(this),
-            getFolderOf: this.getFolderOf.bind(this),
-        };
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTFile
-     */
-    toJSON() {
-        return this;
-    }
-}
-exports.PSTFile = PSTFile;
-/**
- * @internal
- */
-PSTFile.ENCRYPTION_TYPE_NONE = 0;
-/**
- * @internal
- */
-PSTFile.ENCRYPTION_TYPE_COMPRESSIBLE = 1;
-PSTFile.MESSAGE_STORE_DESCRIPTOR_IDENTIFIER = 33;
-PSTFile.ROOT_FOLDER_DESCRIPTOR_IDENTIFIER = 290;
-/**
- * @internal
- */
-PSTFile.PST_TYPE_ANSI = 14;
-/**
- * @internal
- */
-PSTFile.PST_TYPE_ANSI_2 = 15;
-/**
- * @internal
- */
-PSTFile.PST_TYPE_UNICODE = 23;
-/**
- * @internal
- */
-PSTFile.PST_TYPE_2013_UNICODE = 36;
-/**
- * @internal
- */
-PSTFile.PS_PUBLIC_STRINGS = 0;
-/**
- * @internal
- */
-PSTFile.PS_INTERNET_HEADERS = 3;
-/**
- * @internal
- */
-PSTFile.PSETID_Messaging = 7;
-/**
- * @internal
- */
-PSTFile.PSETID_Note = 8;
-/**
- * @internal
- */
-PSTFile.PSETID_PostRss = 9;
-/**
- * @internal
- */
-PSTFile.PSETID_Task = 10;
-/**
- * @internal
- */
-PSTFile.PSETID_UnifiedMessaging = 11;
-/**
- * @internal
- */
-PSTFile.PS_MAPI = 12;
-/**
- * @internal
- */
-PSTFile.PSETID_AirSync = 13;
-/**
- * @internal
- */
-PSTFile.PSETID_Sharing = 14;
-// node tree maps
-PSTFile.nodeMap = new NodeMap_class_1.NodeMap();
-
-
-/***/ }),
-
-/***/ 2158:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTFolder = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTObject_class_1 = __webpack_require__(3563);
-const PSTUtil_class_1 = __webpack_require__(8391);
-const PAUtil_1 = __webpack_require__(3825);
-const TableContextUtil_1 = __webpack_require__(1936);
-const PHUtil_1 = __webpack_require__(9864);
-const CollectionAsyncProvider_1 = __webpack_require__(7683);
-const SingleAsyncProvider_1 = __webpack_require__(460);
-const PropertyContextUtil_1 = __webpack_require__(6918);
-/**
- * Represents a folder in the PST File.  Allows you to access child folders or items.
- * Items are accessed through a sort of cursor arrangement.  This allows for
- * incremental reading of a folder which may have _lots_ of emails.
- * @export
- * @class PSTFolder
- * @extends {PSTObject}
- */
-class PSTFolder extends PSTObject_class_1.PSTObject {
-    /**
-     * Creates an instance of PSTFolder.
-     * Represents a folder in the PST File.  Allows you to access child folders or items.
-     * Items are accessed through a sort of cursor arrangement.  This allows for
-     * incremental reading of a folder which may have _lots_ of emails.
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} descriptorIndexNode
-     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
-     * @memberof PSTFolder
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-        this._subFoldersProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
-        this._emailsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
-    }
-    getEmailsProvider() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this._emailsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
-                const targets = [];
-                if (this.getNodeType() === PSTUtil_class_1.PSTUtil.NID_TYPE_SEARCH_FOLDER) {
-                    // some folder types don't have children:
-                }
-                else {
-                    // trying to read emailsTable PSTTable7C
-                    const contentsTableNode = this._node.getSiblingNode(PSTUtil_class_1.PSTUtil.NID_TYPE_CONTENTS_TABLE);
-                    let doFallback = true;
-                    if (contentsTableNode !== undefined) {
-                        try {
-                            const contentsTableNodeReader = contentsTableNode.getSubNode();
-                            const heap = yield (0, PHUtil_1.getHeapFrom)(contentsTableNodeReader);
-                            const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
-                            const rows = yield tc.rows();
-                            const orderOfNodes = [];
-                            for (let row of rows) {
-                                const props = (0, PAUtil_1.createPropertyFinder)(yield row.list());
-                                const prop = props.findByKey(0x67f2);
-                                if (prop !== undefined && typeof prop.value === 'number') {
-                                    orderOfNodes.push({ nodeId: prop.value, propertyFinder: props });
-                                }
-                            }
-                            const childNodeIdMap = new Map(this._node.getChildren()
-                                .map(node => [node.nodeId, node]));
-                            for (let { nodeId, propertyFinder } of orderOfNodes) {
-                                const found = childNodeIdMap.get(nodeId);
-                                if (found !== undefined) {
-                                    targets.push({
-                                        node: found,
-                                        propertyFinder: propertyFinder,
-                                    });
-                                }
-                            }
-                            doFallback = false;
-                        }
-                        catch (ex) {
-                            // There are some unknown cases that TC of email list is broken.
-                            // Especially on ost file.
-                            // Thus fallback is still required.
-                            // .../Folder#0 // Error: getTableContext.list(rowIndex=0) resolving property key=0x001a type=0x001f of subNode of nodeId=32974,nidType=14 failure --> Error: heap=0x11604460 of subNode of nodeId=32974,nidType=14 not found
-                            // In this case, Outlook 2003 will try to recover the broken TC of that folder with a kind of fallback mode.
-                        }
-                    }
-                    if (doFallback) {
-                        //console.log("fallback");
-                        // fallback to children as listed in the descriptor b-tree
-                        targets.length = 0;
-                        for (let node of this._node.getChildren()) {
-                            if (this.getNodeType(node.nodeId) === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_MESSAGE) {
-                                targets.push({ node, propertyFinder: undefined });
-                            }
-                        }
-                    }
-                }
-                return new CollectionAsyncProvider_1.CollectionAsyncProvider(targets.length, (index) => __awaiter(this, void 0, void 0, function* () {
-                    if (!(index in targets)) {
-                        throw new RangeError(`email index ${index} out of range. maximum index is ${targets.length - 1}.`);
-                    }
-                    return yield this._rootProvider.getItemOf(targets[index].node, targets[index].node.getSubNode(), undefined // targets[index].propertyFinder
-                    );
-                    // Some important properties are not provided thru table context, like:
-                    //
-                    // - msg.senderName
-                    // - msg.sentRepresentingEmailAddress
-                    // - appt.localeId
-                    // - contact.initials
-                    // - activity.bodyPrefix
-                    // 
-                    // Thus we need to load full set of properties
-                    // from property context of corresponding sub node.
-                }));
-            }));
-        });
-    }
-    getSubFoldersProvider() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this._subFoldersProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
-                try {
-                    const targets = [];
-                    for (let node of this._node.getChildren()) {
-                        const nodeType = this.getNodeType(node.nodeId);
-                        if ( false
-                            || nodeType === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_FOLDER) {
-                            targets.push(node);
-                        }
-                    }
-                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(targets.length, (index) => __awaiter(this, void 0, void 0, function* () {
-                        if (!(index in targets)) {
-                            throw new RangeError(`folder index ${index} out of range. maximum index is ${targets.length - 1}.`);
-                        }
-                        return yield this._rootProvider.getFolderOf(targets[index]);
-                    }));
-                }
-                catch (err) {
-                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
-                        this.displayName +
-                        '\n' +
-                        err);
-                    throw err;
-                }
-            }));
-        });
-    }
-    /**
-     * Get folders in one fell swoop, since there's not usually thousands of them.
-     * @returns {PSTFolder[]}
-     * @memberof PSTFolder
-     */
-    getSubFolders() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield (yield this.getSubFoldersProvider()).all();
-        });
-    }
-    getSubFolder(index) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield (yield this.getSubFoldersProvider()).get(index);
-        });
-    }
-    /**
-     * The number of child folders in this folder
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    getSubFolderCount() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getSubFoldersProvider()).count;
-        });
-    }
-    /**
-     * Number of emails in this folder
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    getEmailCount() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getEmailsProvider()).count;
-        });
-    }
-    getEmail(index) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield (yield this.getEmailsProvider()).get(index));
-        });
-    }
-    getEmails() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield (yield this.getEmailsProvider()).all());
-        });
-    }
-    getFasterEmailList(options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const list = [];
-            if (this.getNodeType() === PSTUtil_class_1.PSTUtil.NID_TYPE_SEARCH_FOLDER) {
-                // ignore
-            }
-            else {
-                const rootProvider = this._rootProvider;
-                const innerResolver = {
-                    resolveValueOf(key, type, value, heap) {
-                        return __awaiter(this, void 0, void 0, function* () {
-                            if ( false
-                                || key === OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME
-                                || key === OutlookProperties_1.OutlookProperties.PR_SUBJECT
-                                || key === OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS) {
-                                return rootProvider.resolver.resolveValueOf(key, type, value, heap);
-                            }
-                            return undefined;
-                        });
-                    },
-                };
-                const nodes = this._node.getChildren();
-                const progress = (options === null || options === void 0 ? void 0 : options.progress) || ((_, __) => { });
-                const count = nodes.length;
-                let index = -1;
-                for (let node of nodes) {
-                    progress(++index, count);
-                    if (this.getNodeType(node.nodeId) === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_MESSAGE) {
-                        const subNode = node.getSubNode();
-                        const heap = yield (0, PHUtil_1.getHeapFrom)(subNode);
-                        const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, innerResolver);
-                        const propList = yield pc.list();
-                        function getValueOfAny(keys) {
-                            var _a;
-                            return `${(_a = propList.filter(it => keys.indexOf(it.key) !== -1)[0]) === null || _a === void 0 ? void 0 : _a.value}`;
-                        }
-                        list.push({
-                            displayName: getValueOfAny([OutlookProperties_1.OutlookProperties.PR_SUBJECT, OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME]),
-                            messageClass: getValueOfAny([OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS]),
-                            getMessage() {
-                                return __awaiter(this, void 0, void 0, function* () {
-                                    return yield rootProvider.getItemOf(node, node.getSubNode(), undefined);
-                                });
-                            }
-                        });
-                    }
-                }
-            }
-            return list;
-        });
-    }
-    /**
-     * Contains a constant that indicates the folder type.
-     * https://msdn.microsoft.com/en-us/library/office/cc815373.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    get folderType() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_FOLDER_TYPE);
-    }
-    /**
-     * Contains the number of messages in a folder, as computed by the message store.
-     * For a number calculated by the library use getEmailCount
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    get contentCount() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTENT_COUNT);
-    }
-    /**
-     * Contains the number of unread messages in a folder, as computed by the message store.
-     * https://msdn.microsoft.com/en-us/library/office/cc841964.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    get unreadCount() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTENT_UNREAD);
-    }
-    /**
-     * Contains TRUE if a folder contains subfolders.
-     * once again, read from the PST, use getSubFolderCount if you want to know
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTFolder
-     */
-    get hasSubfolders() {
-        return  false
-            || this.getBooleanItem(OutlookProperties_1.OutlookProperties.PR_SUBFOLDERS)
-            || this.getIntItem(OutlookProperties_1.OutlookProperties.PR_SUBFOLDERS) != 0;
-    }
-    /**
-     * Contains a text string describing the type of a folder. Although this property is
-     * generally ignored, versions of Microsoft® Exchange Server prior to Exchange Server
-     * 2003 Mailbox Manager expect this property to be present.
-     * https://msdn.microsoft.com/en-us/library/office/cc839839.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTFolder
-     */
-    get containerClass() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CONTAINER_CLASS);
-    }
-    /**
-     * Contains a bitmask of flags describing capabilities of an address book container.
-     * https://msdn.microsoft.com/en-us/library/office/cc839610.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTFolder
-     */
-    get containerFlags() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTAINER_FLAGS);
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTFolder
-     */
-    toJSON() {
-        const clone = Object.assign({
-            folderType: this.folderType,
-            contentCount: this.contentCount,
-            unreadCount: this.unreadCount,
-            hasSubfolders: this.hasSubfolders,
-            containerClass: this.containerClass,
-            containerFlags: this.containerFlags,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTFolder = PSTFolder;
-
-
-/***/ }),
-
-/***/ 9015:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTMessage = void 0;
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTFile_class_1 = __webpack_require__(7994);
-const PSTObject_class_1 = __webpack_require__(3563);
-const PSTUtil_class_1 = __webpack_require__(8391);
-const LZFu_class_1 = __webpack_require__(8425);
-const PSTAttachment_class_1 = __webpack_require__(7886);
-const PSTRecipient_class_1 = __webpack_require__(7755);
-const PAUtil_1 = __webpack_require__(3825);
-const PHUtil_1 = __webpack_require__(9864);
-const TableContextUtil_1 = __webpack_require__(1936);
-const PropertyContextUtil_1 = __webpack_require__(6918);
-const SingleAsyncProvider_1 = __webpack_require__(460);
-const CollectionAsyncProvider_1 = __webpack_require__(7683);
-var PidTagMessageFlags;
-(function (PidTagMessageFlags) {
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_READ"] = 1] = "MSGFLAG_READ";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_UNMODIFIED"] = 2] = "MSGFLAG_UNMODIFIED";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_SUBMIT"] = 4] = "MSGFLAG_SUBMIT";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_UNSENT"] = 8] = "MSGFLAG_UNSENT";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_HASATTACH"] = 16] = "MSGFLAG_HASATTACH";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_FROMME"] = 32] = "MSGFLAG_FROMME";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_ASSOCIATED"] = 64] = "MSGFLAG_ASSOCIATED";
-    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_RESEND"] = 128] = "MSGFLAG_RESEND";
-})(PidTagMessageFlags || (PidTagMessageFlags = {}));
-class PSTMessage extends PSTObject_class_1.PSTObject {
-    /**
-     * Creates an instance of PSTMessage. PST Message contains functions that are common across most MAPI objects.
-     * Note that many of these functions may not be applicable for the item in question,
-     * however there seems to be no hard and fast outline for what properties apply to which
-     * objects. For properties where no value is set, a blank value is returned (rather than
-     * an exception being raised).
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} descriptorIndexNode
-     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
-     * @memberof PSTMessage
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-        this._attachmentsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
-        this._recipientsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
-    }
-    /*
-          PidTagMessageFlags
-          https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-      */
-    /**
-     * The message is marked as having been read.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isRead() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_READ) !=
-            0);
-    }
-    /**
-     * The outgoing message has not been modified since the first time that it was saved; the incoming message has not been modified since it was delivered.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isUnmodified() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_UNMODIFIED) !=
-            0);
-    }
-    /**
-     * The message is marked for sending as a result of a call to the RopSubmitMessage ROP
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isSubmitted() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_SUBMIT) !=
-            0);
-    }
-    /**
-     * The message is still being composed. It is saved, but has not been sent.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isUnsent() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_UNSENT) !=
-            0);
-    }
-    /**
-     * The message has at least one attachment.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get hasAttachments() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_HASATTACH) !=
-            0);
-    }
-    /**
-     * The user receiving the message was also the user who sent the message.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isFromMe() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_FROMME) !=
-            0);
-    }
-    /**
-     * The message is an FAI message.  An FAI Message object is used to store a variety of settings and
-     * auxiliary data, including forms, views, calendar options, favorites, and category lists.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isAssociated() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_ASSOCIATED) !=
-            0);
-    }
-    /**
-     * The message includes a request for a resend operation with a nondelivery report.
-     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isResent() {
-        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
-            PidTagMessageFlags.MSGFLAG_RESEND) !=
-            0);
-    }
-    //#region Recipients
-    //#endregion
-    /**
-     * Get the recipients table.
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    getNumberOfRecipients() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getRecipientsProvider()).count;
-        });
-    }
-    /**
-     * Get specific recipient.
-     * @param {number} recipientNumber
-     * @returns {PSTRecipient}
-     * @memberof PSTMessage
-     */
-    getRecipient(recipientNumber) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getRecipientsProvider()).get(recipientNumber);
-        });
-    }
-    getRecipients() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getRecipientsProvider()).all();
-        });
-    }
-    getRecipientsProvider() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this._recipientsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
-                try {
-                    const subNode = this._node.getSubNode();
-                    const childNode = yield subNode.getChildBy(0x692);
-                    if (childNode !== undefined) {
-                        const heap = yield (0, PHUtil_1.getHeapFrom)(childNode);
-                        const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
-                        const rows = yield tc.rows();
-                        return new CollectionAsyncProvider_1.CollectionAsyncProvider(rows.length, (index) => __awaiter(this, void 0, void 0, function* () {
-                            if (!(index in rows)) {
-                                throw new RangeError(`recipient index ${index} out of range. maximum index is ${rows.length - 1}.`);
-                            }
-                            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield rows[index].list());
-                            return new PSTRecipient_class_1.PSTRecipient(this._rootProvider, this._node, this._subNode, propertyFinder);
-                        }));
-                    }
-                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(0, index => {
-                        throw new Error("no recipient exists");
-                    });
-                }
-                catch (err) {
-                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
-                        this.displayName +
-                        '\n' +
-                        err);
-                    throw err;
-                }
-            }));
-        });
-    }
-    /**
-     * Contains TRUE if a message sender wants notification of non-receipt for a specified recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc979208.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isNonReceiptNotificationRequested() {
-        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_NON_RECEIPT_NOTIFICATION_REQUESTED) != 0);
-    }
-    /**
-     * Contains TRUE if a message sender wants notification of non-deliver for a specified recipient.
-     * https://msdn.microsoft.com/en-us/library/ms987568(v=exchg.65).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isOriginatorNonDeliveryReportRequested() {
-        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED) != 0);
-    }
-    /**
-     * Contains the recipient type for a message recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc839620.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get recipientType() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_TYPE);
-    }
-    /*
-          Body (plain text, RTF, HTML)
-      */
-    /**
-     * Plain text message body.
-     * https://msdn.microsoft.com/en-us/library/office/cc765874.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get body() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BODY);
-    }
-    /**
-     * Plain text body prefix.
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get bodyPrefix() {
-        return this.getStringItem(0x6619);
-    }
-    /**
-     * Contains the Rich Text Format (RTF) version of the message text, usually in compressed form.
-     * https://technet.microsoft.com/en-us/library/cc815911
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get bodyRTF() {
-        const item = this._propertyFinder.findByKey(0x1009);
-        // do we have an entry for it?
-        if ( true
-            && item !== undefined
-            && item.value instanceof ArrayBuffer
-            && item.value.byteLength >= 1) {
-            return LZFu_class_1.LZFu.decode(Buffer.from(item.value));
-        }
-        return '';
-    }
-    /**
-     * Contains the cyclical redundancy check (CRC) computed for the message text.
-     * https://technet.microsoft.com/en-us/library/cc815532(v=office.15).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get rtfSyncBodyCRC() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_CRC);
-    }
-    /**
-     * Contains a count of the significant characters of the message text.
-     * https://msdn.microsoft.com/en-us/library/windows/desktop/cc842324.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get rtfSyncBodyCount() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_COUNT);
-    }
-    /**
-     * Contains significant characters that appear at the beginning of the message text.
-     * https://technet.microsoft.com/en-us/library/cc815400(v=office.15).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get rtfSyncBodyTag() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_TAG);
-    }
-    /**
-     * Contains a count of the ignorable characters that appear before the significant characters of the message.
-     * https://msdn.microsoft.com/en-us/magazine/cc842437.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get rtfSyncPrefixCount() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_PREFIX_COUNT);
-    }
-    /**
-     * Contains a count of the ignorable characters that appear after the significant characters of the message.
-     * https://msdn.microsoft.com/en-us/magazine/cc765795.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get rtfSyncTrailingCount() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_TRAILING_COUNT);
-    }
-    /**
-     * Contains the HTML version of the message text.
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get bodyHTML() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BODY_HTML);
-    }
-    //#region Attachments
-    //#endregion
-    getAttachmentsProvider() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this._attachmentsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
-                try {
-                    const childNode = yield this._subNode.getChildBy(0x671);
-                    if (childNode !== undefined) {
-                        const heap = yield (0, PHUtil_1.getHeapFrom)(childNode);
-                        const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
-                        const rows = yield tc.rows();
-                        return new CollectionAsyncProvider_1.CollectionAsyncProvider(rows.length, (index) => __awaiter(this, void 0, void 0, function* () {
-                            if (!(index in rows)) {
-                                throw new RangeError(`attachment index ${index} out of range. maximum index is ${rows.length - 1}.`);
-                            }
-                            // xxx1 is for properties in one row in TableContext.
-                            const list1 = yield rows[index].list();
-                            const propertyFinder1 = (0, PAUtil_1.createPropertyFinder)(list1);
-                            const ltpRowId = propertyFinder1.findByKey(0x67f2);
-                            if (ltpRowId === undefined) {
-                                throw new Error("ltpRowId not found");
-                            }
-                            if (typeof ltpRowId.value !== 'number') {
-                                throw new Error(`ltpRowId type '${typeof ltpRowId.value}' must be 'number'`);
-                            }
-                            // xxx2 is for properties in PropertyContext in dedicated subData
-                            const child2 = yield this._subNode.getChildBy(ltpRowId.value);
-                            if (child2 === undefined) {
-                                throw new Error(`ltpRowId ${ltpRowId.value} not found from ${this._subNode}`);
-                            }
-                            const heap2 = yield (0, PHUtil_1.getHeapFrom)(child2);
-                            const pc2 = yield (0, PropertyContextUtil_1.getPropertyContext)(heap2, this._rootProvider.resolver);
-                            const propertyFinder2 = (0, PAUtil_1.createPropertyFinder)(yield pc2.list());
-                            return new PSTAttachment_class_1.PSTAttachment(this._rootProvider, this._node, child2, propertyFinder2);
-                        }));
-                    }
-                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(0, index => {
-                        throw new Error("no attachment exists");
-                    });
-                }
-                catch (err) {
-                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
-                        this.displayName +
-                        '\n' +
-                        err);
-                    throw err;
-                }
-            }));
-        });
-    }
-    /**
-     * Number of attachments by counting rows in attachment table.
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    getNumberOfAttachments() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield this.getAttachmentsProvider()).count;
-        });
-    }
-    /**
-     * Get specific attachment from table using index.
-     * @param {number} attachmentNumber
-     * @returns {PSTAttachment}
-     * @memberof PSTMessage
-     */
-    getAttachment(attachmentNumber) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield (yield this.getAttachmentsProvider()).get(attachmentNumber));
-        });
-    }
-    getAttachments() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (yield (yield this.getAttachmentsProvider()).all());
-        });
-    }
-    //#region Miscellaneous properties
-    //#endregion
-    /**
-     * Importance of email (sender determined)
-     * https://msdn.microsoft.com/en-us/library/cc815346(v=office.12).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get importance() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_IMPORTANCE, PSTMessage.IMPORTANCE_NORMAL);
-    }
-    /**
-     * Contains a text string that identifies the sender-defined message class, such as IPM.Note.
-     * https://msdn.microsoft.com/en-us/library/office/cc765765.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get messageClass() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS);
-    }
-    /**
-     * Contains the full subject of a message.
-     * https://technet.microsoft.com/en-us/library/cc815720
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get subject() {
-        let subject = this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SUBJECT);
-        if (subject != null &&
-            subject.length >= 2 &&
-            subject.charCodeAt(0) == 0x01) {
-            if (subject.length == 2) {
-                subject = '';
-            }
-            else {
-                subject = subject.substring(2, subject.length);
-            }
-        }
-        return subject;
-    }
-    /**
-     * Contains the date and time the message sender submitted a message.
-     * https://technet.microsoft.com/en-us/library/cc839781
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get clientSubmitTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CLIENT_SUBMIT_TIME);
-    }
-    /**
-     * Contains the display name of the messaging user who receives the message.
-     * https://msdn.microsoft.com/en-us/library/office/cc840015.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get receivedByName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_NAME);
-    }
-    /**
-     * Contains the display name for the messaging user represented by the sender.
-     * https://msdn.microsoft.com/en-us/library/office/cc842405.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get sentRepresentingName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_NAME);
-    }
-    /**
-     * Contains the address type for the messaging user who is represented by the sender.
-     * https://msdn.microsoft.com/en-us/library/office/cc839677.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get sentRepresentingAddressType() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_ADDRTYPE);
-    }
-    /**
-     * Contains the e-mail address for the messaging user who is represented by the sender.
-     * https://msdn.microsoft.com/en-us/library/office/cc839552.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get sentRepresentingEmailAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_EMAIL_ADDRESS);
-    }
-    /**
-     * Contains the topic of the first message in a conversation thread.
-     * https://technet.microsoft.com/en-us/windows/cc839841
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get conversationTopic() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CONVERSATION_TOPIC);
-    }
-    /**
-     * Contains the e-mail address type, such as SMTP, for the messaging user who actually receives the message.
-     * https://technet.microsoft.com/en-us/library/cc765641(v=office.14)
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get receivedByAddressType() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_ADDRTYPE);
-    }
-    /**
-     * Contains the e-mail address for the messaging user who receives the message.
-     * https://technet.microsoft.com/en-us/library/cc839550(v=office.14)
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get receivedByAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_EMAIL_ADDRESS);
-    }
-    /**
-     * Contains transport-specific message envelope information.
-     * https://technet.microsoft.com/en-us/library/cc815628
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get transportMessageHeaders() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TRANSPORT_MESSAGE_HEADERS);
-    }
-    // Acknowledgment mode Integer 32-bit signed
-    get acknowledgementMode() {
-        return this.getIntItem(0x0001);
-    }
-    /**
-     * Contains TRUE if a message sender requests a delivery report for a particular recipient from the messaging system before the message is placed in the message store.
-     * https://msdn.microsoft.com/en-us/library/office/cc765845.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get originatorDeliveryReportRequested() {
-        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED) != 0);
-    }
-    /**
-     * Contains the relative priority of a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc765646.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get priority() {
-        return this.getIntItem(0x0026);
-    }
-    /**
-     * Contains TRUE if a message sender wants the messaging system to generate a read report when the recipient has read a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc842094.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get readReceiptRequested() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_READ_RECEIPT_REQUESTED) != 0;
-    }
-    /**
-     * Specifies whether adding additional recipients, when forwarding the message, is prohibited for the e-mail message.
-     * https://msdn.microsoft.com/en-us/library/office/cc979216.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get recipientReassignmentProhibited() {
-        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_REASSIGNMENT_PROHIBITED) !=
-            0);
-    }
-    /**
-     * Contains the sensitivity value assigned by the sender of the first version of a message that is, the message before being forwarded or replied to.
-     * https://msdn.microsoft.com/en-us/library/cc839694(office.12).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get originalSensitivity() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_SENSITIVITY);
-    }
-    /**
-     * Contains a value that indicates the message sender's opinion of the sensitivity of a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc839518.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get sensitivity() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_SENSITIVITY);
-    }
-    /**
-     * Contains the search key for the messaging user represented by the sender.
-     * https://msdn.microsoft.com/en-us/magazine/cc842068.aspx
-     * @readonly
-     * @type {Buffer}
-     * @memberof PSTMessage
-     */
-    get pidTagSentRepresentingSearchKey() {
-        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_SEARCH_KEY);
-    }
-    /**
-     * Contains the display name for the messaging user who is represented by the receiving user.
-     * https://technet.microsoft.com/en-us/library/cc842260.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get rcvdRepresentingName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_NAME);
-    }
-    /**
-     * Contains the subject of an original message for use in a report about the message.
-     * https://msdn.microsoft.com/en-us/library/office/cc842182.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get originalSubject() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_SUBJECT);
-    }
-    /**
-     * Contains a list of display names for recipients that are to get a reply.
-     * https://msdn.microsoft.com/en-us/library/windows/desktop/cc815850.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get replyRecipientNames() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_REPLY_RECIPIENT_NAMES);
-    }
-    /**
-     * Contains TRUE if this messaging user is specifically named as a primary (To) recipient of this message and is not part of a distribution list.
-     * https://technet.microsoft.com/en-us/library/cc815755
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get messageToMe() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_TO_ME) != 0;
-    }
-    /**
-     * Contains TRUE if this messaging user is specifically named as a carbon copy (CC) recipient of this message and is not part of a distribution list.
-     * https://msdn.microsoft.com/en-us/library/office/cc839713.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get messageCcMe() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_CC_ME) != 0;
-    }
-    /**
-     * Contains TRUE if this messaging user is specifically named as a primary (To), carbon copy (CC), or blind carbon copy (BCC) recipient of this message and is not part of a distribution list.
-     * https://msdn.microsoft.com/en-us/library/office/cc842268.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get messageRecipMe() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_RECIP_ME) != 0;
-    }
-    /**
-     * Contains TRUE if the message sender wants a response to a meeting request.
-     * https://msdn.microsoft.com/en-us/library/office/cc839921.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get responseRequested() {
-        return this.getBooleanItem(OutlookProperties_1.OutlookProperties.PR_RESPONSE_REQUESTED);
-    }
-    /**
-     * Contains the display names of any carbon copy (CC) recipients of the original message.
-     * https://msdn.microsoft.com/en-us/magazine/cc815841(v=office.14).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get originalDisplayBcc() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_BCC);
-    }
-    /**
-     * Contains the display names of any carbon copy (CC) recipients of the original message.
-     * https://msdn.microsoft.com/en-us/magazine/cc815841(v=office.14).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get originalDisplayCc() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_CC);
-    }
-    /**
-     * Contains the display names of the primary (To) recipients of the original message.
-     * https://msdn.microsoft.com/en-us/magazine/cc842235(v=office.14).aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get originalDisplayTo() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_TO);
-    }
-    /**
-     * Contains the address type for the messaging user who is represented by the user actually receiving the message.
-     * https://msdn.microsoft.com/en-us/library/office/cc842447.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get rcvdRepresentingAddrtype() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_ADDRTYPE);
-    }
-    /**
-     * Contains the e-mail address for the messaging user who is represented by the receiving user.
-     * https://msdn.microsoft.com/en-us/library/office/cc815875.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get rcvdRepresentingEmailAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_EMAIL_ADDRESS);
-    }
-    /**
-     * Contains TRUE if a message sender requests a reply from a recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc815286.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isReplyRequested() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_REPLY_REQUESTED) != 0;
-    }
-    /**
-     * Contains the message sender's entry identifier.
-     * https://msdn.microsoft.com/en-us/library/office/cc815625.aspx
-     * @readonly
-     * @type {Buffer}
-     * @memberof PSTMessage
-     */
-    get senderEntryId() {
-        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PR_SENDER_ENTRYID);
-    }
-    /**
-     * Contains the message sender's display name.
-     * https://msdn.microsoft.com/en-us/library/office/cc815457.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get senderName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_NAME);
-    }
-    /**
-     * Contains the message sender's e-mail address type.
-     * https://msdn.microsoft.com/en-us/library/office/cc815748.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get senderAddrtype() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_ADDRTYPE);
-    }
-    /**
-     * Contains the message sender's e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc839670.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get senderEmailAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_EMAIL_ADDRESS);
-    }
-    /**
-     * Contains the sum, in bytes, of the sizes of all properties on a message object
-     * https://technet.microsoft.com/en-us/library/cc842471
-     * @readonly
-     * @type {long}
-     * @memberof PSTMessage
-     */
-    get messageSize() {
-        return this.getLongItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_SIZE);
-    }
-    /**
-     * A number associated with an item in a message store.
-     * https://msdn.microsoft.com/en-us/library/office/cc815718.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get internetArticleNumber() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_ARTICLE_NUMBER);
-    }
-    /**
-     * Contains a string that names the first server that is used to send the message.
-     * https://msdn.microsoft.com/en-us/library/office/cc815413.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get primarySendAccount() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_SEND_ACCOUNT);
-    }
-    /**
-     * Specifies the server that a client is currently attempting to use to send e-mail.
-     * https://technet.microsoft.com/en-us/library/cc842327(v=office.14)
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get nextSendAcct() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_NEXT_SEND_ACCT);
-    }
-    /**
-     * Contains the type of an object.
-     * https://msdn.microsoft.com/en-us/library/office/cc815487.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get objectType() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_OBJECT_TYPE);
-    }
-    /**
-     * Contains TRUE if a client application wants MAPI to delete the associated message after submission.
-     * https://msdn.microsoft.com/en-us/library/office/cc842353.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get deleteAfterSubmit() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_DELETE_AFTER_SUBMIT) != 0;
-    }
-    /**
-     * Contains TRUE if some transport provider has already accepted responsibility for delivering the message to this recipient, and FALSE if the MAPI spooler considers that this transport provider should accept responsibility.
-     * https://msdn.microsoft.com/en-us/library/office/cc765767.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get responsibility() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RESPONSIBILITY) != 0;
-    }
-    /**
-     * Contains TRUE if the PR_RTF_COMPRESSED (PidTagRtfCompressed) property has the same text content as the PR_BODY (PidTagBody) property for this message.
-     * https://msdn.microsoft.com/en-us/library/office/cc765844.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isRTFInSync() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_IN_SYNC) != 0;
-    }
-    /**
-     * Contains an ASCII list of the display names of any blind carbon copy (BCC) message recipients, separated by semicolons (;).
-     * https://msdn.microsoft.com/en-us/library/office/cc815730.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get displayBCC() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_BCC);
-    }
-    /**
-     * Contains an ASCII list of the display names of any carbon copy (CC) message recipients, separated by semicolons (;).
-     * https://msdn.microsoft.com/en-us/library/office/cc765528.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get displayCC() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_CC);
-    }
-    /**
-     * Contains a list of the display names of the primary (To) message recipients, separated by semicolons (;).
-     * https://msdn.microsoft.com/en-us/library/office/cc839687.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get displayTo() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_TO);
-    }
-    /**
-     * Contains the date and time when a message was delivered.
-     * https://msdn.microsoft.com/en-us/library/office/cc841961.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get messageDeliveryTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_DELIVERY_TIME);
-    }
-    /**
-     * Corresponds to the message ID field as specified in [RFC2822].
-     * https://msdn.microsoft.com/en-us/library/office/cc839521.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get internetMessageId() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_MESSAGE_ID);
-    }
-    /**
-     * Contains the original message's PR_INTERNET_MESSAGE_ID (PidTagInternetMessageId) property value.
-     * https://msdn.microsoft.com/en-us/library/office/cc839776.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get inReplyToId() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_IN_REPLY_TO_ID);
-    }
-    /**
-     * Contains the value of a Multipurpose Internet Mail Extensions (MIME) message's Return-Path header field. The e-mail address of the message's sender.
-     * https://msdn.microsoft.com/en-us/library/office/cc765856.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get returnPath() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_RETURN_PATH);
-    }
-    /**
-     * Contains a number that indicates which icon to use when you display a group of e-mail objects.
-     * https://msdn.microsoft.com/en-us/library/office/cc815472.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get iconIndex() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ICON_INDEX);
-    }
-    /**
-     * Contains the last verb executed.
-     * Todo: Helper methods for each flag.
-     * https://msdn.microsoft.com/en-us/library/office/cc841968.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get lastVerbExecuted() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_LAST_VERB_EXECUTED);
-    }
-    /**
-     * Contains the time when the last verb was executed.
-     * https://msdn.microsoft.com/en-us/library/office/cc839918.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get lastVerbExecutionTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_VERB_EXECUTION_TIME);
-    }
-    /**
-     * The URL component name for a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc815653.aspx
-     * @readonly
-     * @type {String}
-     * @memberof PSTMessage
-     */
-    get urlCompName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_URL_COMP_NAME);
-    }
-    /**
-     * Specifies the hide or show status of a folder.
-     * https://msdn.microsoft.com/en-us/library/ee159038(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get attrHidden() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTR_HIDDEN) != 0;
-    }
-    /**
-     * Specifies the date on which the user expects work on the task to begin.
-     * https://technet.microsoft.com/en-us/library/cc815922(v=office.12).aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get taskStartDate() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskStartDate, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Represents the date when the user expects to complete the task.
-     * https://technet.microsoft.com/en-us/library/cc839641(v=office.12).aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get taskDueDate() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDueDate, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Specifies whether a reminder is set on the object.
-     * https://msdn.microsoft.com/en-us/library/office/cc765589.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get reminderSet() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidReminderSet, OutlookProperties_1.OutlookProperties.PSETID_Common));
-    }
-    /**
-     * Specifies the interval, in minutes, between the time when the reminder first becomes overdue and the start time of the calendar object.
-     * https://msdn.microsoft.com/en-us/library/office/cc765535.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get reminderDelta() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidReminderDelta, OutlookProperties_1.OutlookProperties.PSETID_Common));
-    }
-    /**
-     * Color categories
-     * @readonly
-     * @type {string[]}
-     * @memberof PSTMessage
-     */
-    get colorCategories() {
-        const keywordCategory = PSTFile_class_1.PSTFile.getPublicStringToIdMapItem('Keywords');
-        const categories = [];
-        const item = this._propertyFinder.findByKey(keywordCategory);
-        if ( true
-            && item !== undefined
-            && item.value instanceof ArrayBuffer) {
-            const data = item.value;
-            try {
-                if (data.byteLength !== 0) {
-                    const view = new DataView(data);
-                    const dataBuffer = Buffer.from(data);
-                    const categoryCount = view.getUint8(0);
-                    if (categoryCount > 0) {
-                        const categories = [];
-                        const offsets = [];
-                        for (let x = 0; x < categoryCount; x++) {
-                            offsets[x] = view.getUint32(x * 4 + 1, true);
-                        }
-                        for (let x = 0; x < offsets.length - 1; x++) {
-                            const start = offsets[x];
-                            const end = offsets[x + 1];
-                            const length = end - start;
-                            const buf = Buffer.alloc(length);
-                            PSTUtil_class_1.PSTUtil.arraycopy(dataBuffer, start, buf, 0, length);
-                            const name = Buffer.from(buf).toString();
-                            categories[x] = name;
-                        }
-                        const start = offsets[offsets.length - 1];
-                        const end = data.byteLength;
-                        const length = end - start;
-                        const buf = Buffer.alloc(length);
-                        PSTUtil_class_1.PSTUtil.arraycopy(dataBuffer, start, buf, 0, length);
-                        const name = Buffer.from(buf).toString();
-                        categories[categories.length - 1] = name;
-                    }
-                }
-            }
-            catch (err) {
-                console.error('PSTMessage::colorCategories Unable to decode category data\n' + err);
-                throw err;
-            }
-        }
-        return categories;
-    }
-    /**
-     * Contains a computed value derived from other conversation-related properties.
-     * https://msdn.microsoft.com/en-us/library/ee204279(v=exchg.80).aspx
-     * @readonly
-     * @type {Buffer}
-     * @memberof PSTMessage
-     */
-    get conversationId() {
-        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PidTagConversationId);
-    }
-    /**
-     * Indicates whether the GUID portion of the PidTagConversationIndex property (section 2.641) is to be used to compute the PidTagConversationId property (section 2.640).
-     * https://msdn.microsoft.com/en-us/library/ee218393(v=exchg.80).aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTMessage
-     */
-    get isConversationIndexTracking() {
-        return this.getBooleanItem(OutlookProperties_1.OutlookProperties.PidTagConversationIndexTracking, false);
-    }
-    /**
-     * Contains the messaging user's e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842372.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get emailAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_EMAIL_ADDRESS);
-    }
-    /**
-     * Contains the messaging user's e-mail address type, such as SMTP.
-     * https://msdn.microsoft.com/en-us/library/office/cc815548.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get addrType() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ADDRTYPE);
-    }
-    /**
-     * Contains a comment about the purpose or content of an object.
-     * https://msdn.microsoft.com/en-us/library/office/cc842022.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get comment() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMMENT);
-    }
-    /**
-     * Contains the creation date and time of a message.
-     * https://msdn.microsoft.com/en-us/library/office/cc765677.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get creationTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CREATION_TIME);
-    }
-    /**
-     * Contains the date and time when the object or subobject was last modified.
-     * https://msdn.microsoft.com/en-us/library/office/cc815689.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTMessage
-     */
-    get modificationTime() {
-        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_MODIFICATION_TIME);
-    }
-    /**
-     * JSON stringify the object properties.  Large fields (like body) aren't included.
-     * @returns {string}
-     * @memberof PSTMessage
-     */
-    toJSON() {
-        const clone = Object.assign({
-            messageClass: this.messageClass,
-            emailAddress: this.emailAddress,
-            subject: this.subject,
-            addrType: this.addrType,
-            comment: this.comment,
-            creationTime: this.creationTime,
-            modificationTime: this.modificationTime,
-            importance: this.importance,
-            transportMessageHeaders: this.transportMessageHeaders,
-            clientSubmitTime: this.clientSubmitTime,
-            receivedByName: this.receivedByName,
-            sentRepresentingName: this.sentRepresentingName,
-            sentRepresentingAddressType: this.sentRepresentingAddressType,
-            sentRepresentingEmailAddress: this.sentRepresentingEmailAddress,
-            conversationTopic: this.conversationTopic,
-            receivedByAddressType: this.receivedByAddressType,
-            receivedByAddress: this.receivedByAddress,
-            isRead: this.isRead,
-            isUnmodified: this.isUnmodified,
-            isSubmitted: this.isSubmitted,
-            isUnsent: this.isUnsent,
-            hasAttachments: this.hasAttachments,
-            isFromMe: this.isFromMe,
-            isAssociated: this.isAssociated,
-            isResent: this.isResent,
-            acknowledgementMode: this.acknowledgementMode,
-            originatorDeliveryReportRequested: this
-                .originatorDeliveryReportRequested,
-            readReceiptRequested: this.readReceiptRequested,
-            recipientReassignmentProhibited: this.recipientReassignmentProhibited,
-            originalSensitivity: this.originalSensitivity,
-            sensitivity: this.sensitivity,
-            rcvdRepresentingName: this.rcvdRepresentingName,
-            bloriginalSubjectah: this.originalSubject,
-            replyRecipientNames: this.replyRecipientNames,
-            messageToMe: this.messageToMe,
-            messageCcMe: this.messageCcMe,
-            messageRecipMe: this.messageRecipMe,
-            responseRequested: this.responseRequested,
-            originalDisplayBcc: this.originalDisplayBcc,
-            originalDisplayCc: this.originalDisplayCc,
-            originalDisplayTo: this.originalDisplayTo,
-            rcvdRepresentingAddrtype: this.rcvdRepresentingAddrtype,
-            rcvdRepresentingEmailAddress: this.rcvdRepresentingEmailAddress,
-            isNonReceiptNotificationRequested: this
-                .isNonReceiptNotificationRequested,
-            isOriginatorNonDeliveryReportRequested: this
-                .isOriginatorNonDeliveryReportRequested,
-            recipientType: this.recipientType,
-            isReplyRequested: this.isReplyRequested,
-            senderName: this.senderName,
-            senderAddrtype: this.senderAddrtype,
-            senderEmailAddress: this.senderEmailAddress,
-            messageSize: this.messageSize,
-            internetArticleNumber: this.internetArticleNumber,
-            primarySendAccount: this.primarySendAccount,
-            nextSendAcct: this.nextSendAcct,
-            objectType: this.objectType,
-            deleteAfterSubmit: this.deleteAfterSubmit,
-            responsibility: this.responsibility,
-            isRTFInSync: this.isRTFInSync,
-            displayBCC: this.displayBCC,
-            displayCC: this.displayCC,
-            displayTo: this.displayTo,
-            messageDeliveryTime: this.messageDeliveryTime,
-            bodyPrefix: this.bodyPrefix,
-            rtfSyncBodyCRC: this.rtfSyncBodyCRC,
-            rtfSyncBodyCount: this.rtfSyncBodyCount,
-            rtfSyncBodyTag: this.rtfSyncBodyTag,
-            rtfSyncPrefixCount: this.rtfSyncPrefixCount,
-            rtfSyncTrailingCount: this.rtfSyncTrailingCount,
-            internetMessageId: this.internetMessageId,
-            inReplyToId: this.inReplyToId,
-            returnPath: this.returnPath,
-            iconIndex: this.iconIndex,
-            lastVerbExecutionTime: this.lastVerbExecutionTime,
-            urlCompName: this.urlCompName,
-            attrHidden: this.attrHidden,
-            taskStartDate: this.taskStartDate,
-            taskDueDate: this.taskDueDate,
-            reminderSet: this.reminderSet,
-            reminderDelta: this.reminderDelta,
-            colorCategories: this.colorCategories,
-            conversationId: this.conversationId,
-            isConversationIndexTracking: this.isConversationIndexTracking,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTMessage = PSTMessage;
-PSTMessage.IMPORTANCE_LOW = 0;
-PSTMessage.IMPORTANCE_NORMAL = 1;
-PSTMessage.IMPORTANCE_HIGH = 2;
-PSTMessage.RECIPIENT_TYPE_TO = 1;
-PSTMessage.RECIPIENT_TYPE_CC = 2;
-
-
-/***/ }),
-
-/***/ 8521:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTMessageStore = void 0;
-const PSTObject_class_1 = __webpack_require__(3563);
-class PSTMessageStore extends PSTObject_class_1.PSTObject {
-    /**
-     * Creates an instance of PSTMessageStore.
-     * Not much use other than to get the "name" of the PST file.
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} descriptorIndexNode
-     * @memberof PSTMessageStore
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-}
-exports.PSTMessageStore = PSTMessageStore;
-
-
-/***/ }),
-
-/***/ 3563:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTObject = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const long_1 = __importDefault(__webpack_require__(1583));
-const OutlookProperties_1 = __webpack_require__(6725);
-class PSTObject {
-    /**
-     * Creates an instance of PSTObject, the root class of most PST Items.
-     * @internal
-     * @memberof PSTObject
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        if (!propertyFinder) {
-            console.trace("propertyFinder not defined");
-        }
-        this._rootProvider = rootProvider;
-        this._node = node;
-        this._subNode = subNode;
-        this._propertyFinder = propertyFinder;
-    }
-    /**
-     * Get the node type for the descriptor id.
-     * @param {number} [descriptorIdentifier]
-     * @returns {number}
-     * @memberof PSTObject
-     */
-    getNodeType(descriptorIdentifier) {
-        if (descriptorIdentifier) {
-            return descriptorIdentifier & 0x1f;
-        }
-        else if (this._node.nodeId) {
-            return this._node.nodeId & 0x1f;
-        }
-        else {
-            return -1;
-        }
-    }
-    /**
-     * @protected
-     * @param { number } identifier
-     * @param { number } [defaultValue]
-     * @returns { number }
-     * @memberof PSTObject
-     */
-    getIntItem(identifier, defaultValue) {
-        if (!defaultValue) {
-            defaultValue = 0;
-        }
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (typeof value === 'number') {
-                return value;
-            }
-        }
-        return defaultValue;
-    }
-    /**
-     * Get a boolean.
-     * @protected
-     * @param {number} identifier
-     * @param {boolean} [defaultValue]
-     * @returns {boolean}
-     * @memberof PSTObject
-     */
-    getBooleanItem(identifier, defaultValue) {
-        if (defaultValue === undefined) {
-            defaultValue = false;
-        }
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (typeof value === 'boolean') {
-                return value;
-            }
-        }
-        return defaultValue;
-    }
-    /**
-     * Get a double.
-     * @protected
-     * @param {number} identifier
-     * @param {number} [defaultValue]
-     * @returns {number}
-     * @memberof PSTObject
-     */
-    getDoubleItem(identifier, defaultValue) {
-        if (defaultValue === undefined) {
-            defaultValue = 0;
-        }
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (typeof value === 'number') {
-                return value;
-            }
-        }
-        return defaultValue;
-    }
-    /**
-     * Get a long.
-     * @protected
-     * @param {number} identifier
-     * @param {long} [defaultValue]
-     * @returns {long}
-     * @memberof PSTObject
-     */
-    getLongItem(identifier, defaultValue) {
-        if (defaultValue === undefined) {
-            defaultValue = long_1.default.ZERO;
-        }
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (value instanceof long_1.default) {
-                return value;
-            }
-            else if (typeof value === 'number') {
-                return new long_1.default(value);
-            }
-        }
-        return defaultValue;
-    }
-    /**
-     * Get a string.
-     * @protected
-     * @param {number} identifier
-     * @param {number} [stringType]
-     * @param {string} [codepage]
-     * @returns {string}
-     * @memberof PSTObject
-     */
-    getStringItem(identifier, stringType, codepage) {
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (typeof value === 'string') {
-                return value;
-            }
-        }
-        return '';
-    }
-    /**
-     * Get a date.
-     * @param {number} identifier
-     * @returns {Date}
-     * @memberof PSTObject
-     */
-    getDateItem(identifier) {
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (value instanceof Date) {
-                return value;
-            }
-        }
-        return null;
-    }
-    /**
-     * Get a blob.
-     * @protected
-     * @param {number} identifier
-     * @returns {Buffer}
-     * @memberof PSTObject
-     */
-    getBinaryItem(identifier) {
-        const property = this._propertyFinder.findByKey(identifier);
-        if (property !== undefined) {
-            const { value } = property;
-            if (value instanceof ArrayBuffer) {
-                return Buffer.from(value);
-            }
-        }
-        return null;
-    }
-    /**
-     * Get the display name of this object.
-     * https://msdn.microsoft.com/en-us/library/office/cc842383.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTObject
-     */
-    get displayName() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME);
-    }
-    /**
-     * Try to get specified property from PropertyContext.
-     *
-     * @param key `0x3001` is `PR_DISPLAY_NAME` for example
-     * @returns The found one will be returned. Otherwise `undefined` is returned.
-     */
-    getProperty(key) {
-        return this._propertyFinder.findByKey(key);
-    }
-    /**
-     * JSON the object.
-     * @returns {string}
-     * @memberof PSTObject
-     */
-    toJSON() {
-        return this;
-    }
-}
-exports.PSTObject = PSTObject;
-
-
-/***/ }),
-
-/***/ 7755:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTRecipient = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTObject_class_1 = __webpack_require__(3563);
-// Class containing recipient information
-class PSTRecipient extends PSTObject_class_1.PSTObject {
-    /**
-     * Creates an instance of PSTRecipient.
-     * @internal
-     * @param {Map<number, PSTTableItem>} recipientDetails
-     * @memberof PSTRecipient
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * Contains the recipient type for a message recipient.
-     * https://msdn.microsoft.com/en-us/library/office/cc839620.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTMessage
-     */
-    get recipientType() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_TYPE);
-    }
-    /**
-     * Contains the messaging user's e-mail address type, such as SMTP.
-     * https://msdn.microsoft.com/en-us/library/office/cc815548.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get addrType() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ADDRTYPE);
-    }
-    /**
-     * Contains the messaging user's e-mail address.
-     * https://msdn.microsoft.com/en-us/library/office/cc842372.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTMessage
-     */
-    get emailAddress() {
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_EMAIL_ADDRESS);
-    }
-    /**
-     * Specifies a bit field that describes the recipient status.
-     * https://msdn.microsoft.com/en-us/library/office/cc815629.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTRecipient
-     */
-    get recipientFlags() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_FLAGS);
-    }
-    /**
-     * Specifies the location of the current recipient in the recipient table.
-     * https://msdn.microsoft.com/en-us/library/ee201359(v=exchg.80).aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTRecipient
-     */
-    get recipientOrder() {
-        return this.getIntItem(OutlookProperties_1.OutlookProperties.PidTagRecipientOrder);
-    }
-    /**
-     * Contains the SMTP address for the address book object.
-     * https://msdn.microsoft.com/en-us/library/office/cc842421.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTRecipient
-     */
-    get smtpAddress() {
-        // If the recipient address type is SMTP, we can simply return the recipient address.
-        const addressType = this.addrType;
-        if (addressType != null && addressType.toLowerCase() === 'smtp') {
-            const addr = this.emailAddress;
-            if (addr != null && addr.length != 0) {
-                return addr;
-            }
-        }
-        // Otherwise, we have to hope the SMTP address is present as the PidTagPrimarySmtpAddress property.
-        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SMTP_ADDRESS);
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTRecipient
-     */
-    toJSON() {
-        const clone = Object.assign({
-            displayName: this.displayName,
-            smtpAddress: this.smtpAddress,
-            recipientType: this.recipientType,
-            addrType: this.addrType,
-            emailAddress: this.emailAddress,
-            recipientFlags: this.recipientFlags,
-            recipientOrder: this.recipientOrder,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTRecipient = PSTRecipient;
-
-
-/***/ }),
-
-/***/ 8347:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTTask = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const OutlookProperties_1 = __webpack_require__(6725);
-const PSTMessage_class_1 = __webpack_require__(9015);
-const PSTFile_class_1 = __webpack_require__(7994);
-const RecurrencePattern_class_1 = __webpack_require__(3934);
-class PSTTask extends PSTMessage_class_1.PSTMessage {
-    /**
-     * Creates an instance of PSTTask.
-     * @internal
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} descriptorIndexNode
-     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
-     * @memberof PSTTask
-     */
-    constructor(rootProvider, node, subNode, propertyFinder) {
-        super(rootProvider, node, subNode, propertyFinder);
-    }
-    /**
-     * Specifies the status of the user's progress on the task.
-     * https://msdn.microsoft.com/en-us/library/office/cc842120.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskStatus() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskStatus, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the progress the user has made on a task.
-     * https://msdn.microsoft.com/en-us/library/office/cc839932.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get percentComplete() {
-        return this.getDoubleItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidPercentComplete, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Specifies the date when the user completes the task.
-     * https://msdn.microsoft.com/en-us/library/office/cc815753.aspx
-     * @readonly
-     * @type {Date}
-     * @memberof PSTTask
-     */
-    get taskDateCompleted() {
-        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDateCompleted, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the number of minutes that the user performed a task.
-     * https://msdn.microsoft.com/en-us/library/office/cc842253.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskActualEffort() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskActualEffort, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the amount of time, in minutes, that the user expects to perform a task.
-     * https://msdn.microsoft.com/en-us/library/office/cc842485.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskEstimatedEffort() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskEstimatedEffort, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates which copy is the latest update of a task.
-     * https://msdn.microsoft.com/en-us/library/office/cc815510.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskVersion() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskVersion, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the task is complete.
-     * https://msdn.microsoft.com/en-us/library/office/cc839514.aspx
-     * @readonly
-     * @type {boolean}
-     * @memberof PSTTask
-     */
-    get isTaskComplete() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskComplete, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Contains the name of the task owner.
-     * https://msdn.microsoft.com/en-us/library/office/cc842363.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTTask
-     */
-    get taskOwner() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOwner, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Names the user who was last assigned the task.
-     * https://msdn.microsoft.com/en-us/library/office/cc815865.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTTask
-     */
-    get taskAssigner() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskAssigner, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Names the most recent user who was the task owner.
-     * https://msdn.microsoft.com/en-us/library/office/cc842278.aspx
-     * @readonly
-     * @type {string}
-     * @memberof PSTTask
-     */
-    get taskLastUser() {
-        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskLastUser, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Provides an aid to custom sorting tasks.
-     * https://msdn.microsoft.com/en-us/library/office/cc765654.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskOrdinal() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOrdinal, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates whether the task includes a recurrence pattern.
-     * https://msdn.microsoft.com/en-us/library/office/cc765875.aspx
-     * @type {boolean}
-     * @memberof PSTTask
-     */
-    get isTaskRecurring() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskFRecurring, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * https://docs.microsoft.com/en-us/office/client-developer/outlook/mapi/pidlidtaskrecurrence-canonical-property
-     * @type {RecurrencePattern}
-     * @memberof PSTTask
-     */
-    get taskRecurrencePattern() {
-        const recurrenceBLOB = this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskRecurrence, PSTFile_class_1.PSTFile.PSETID_Task));
-        return recurrenceBLOB && new RecurrencePattern_class_1.RecurrencePattern(recurrenceBLOB);
-    }
-    /**
-     * https://docs.microsoft.com/en-us/office/client-developer/outlook/mapi/pidlidtaskdeadoccurrence-canonical-property
-     * @type {boolean}
-     * @memberof PSTTask
-     */
-    get taskDeadOccurrence() {
-        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDeadOccurrence, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the role of the current user relative to the task.
-     * https://msdn.microsoft.com/en-us/library/office/cc842113.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get taskOwnership() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOwnership, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * Indicates the acceptance state of the task.
-     * https://msdn.microsoft.com/en-us/library/office/cc839689.aspx
-     * @readonly
-     * @type {number}
-     * @memberof PSTTask
-     */
-    get acceptanceState() {
-        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskAcceptanceState, PSTFile_class_1.PSTFile.PSETID_Task));
-    }
-    /**
-     * JSON stringify the object properties.
-     * @returns {string}
-     * @memberof PSTTask
-     */
-    toJSON() {
-        const clone = Object.assign({
-            messageClass: this.messageClass,
-            subject: this.subject,
-            importance: this.importance,
-            transportMessageHeaders: this.transportMessageHeaders,
-            taskStatus: this.taskStatus,
-            percentComplete: this.percentComplete,
-            taskDateCompleted: this.taskDateCompleted,
-            taskActualEffort: this.taskActualEffort,
-            taskEstimatedEffort: this.taskEstimatedEffort,
-            taskVersion: this.taskVersion,
-            isTaskComplete: this.isTaskComplete,
-            taskOwner: this.taskOwner,
-            taskAssigner: this.taskAssigner,
-            taskLastUser: this.taskLastUser,
-            taskOrdinal: this.taskOrdinal,
-            isTaskRecurring: this.isTaskRecurring,
-            taskOwnership: this.taskOwnership,
-            acceptanceState: this.acceptanceState,
-        }, this);
-        return clone;
-    }
-}
-exports.PSTTask = PSTTask;
-
-
-/***/ }),
-
-/***/ 8391:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PSTUtil = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const long_1 = __importDefault(__webpack_require__(1583));
-const PSTAppointment_class_1 = __webpack_require__(9944);
-const PSTContact_class_1 = __webpack_require__(672);
-const PSTMessage_class_1 = __webpack_require__(9015);
-const PSTTask_class_1 = __webpack_require__(8347);
-const PSTActivity_class_1 = __webpack_require__(8829);
-const iconv_lite_1 = __importDefault(__webpack_require__(4914));
-const PHUtil_1 = __webpack_require__(9864);
-const PropertyContextUtil_1 = __webpack_require__(6918);
-const PAUtil_1 = __webpack_require__(3825);
-/**
- * Utility functions for PST components
- * @export
- * @class PSTUtil
- */
-class PSTUtil {
-    /**
-     * Convert little endian bytes to long
-     * @static
-     * @param {Buffer} data
-     * @param {number} [start]
-     * @param {number} [end]
-     * @returns {long}
-     * @memberof PSTUtil
-     */
-    static convertLittleEndianBytesToLong(data, start, end) {
-        if (!start) {
-            start = 0;
-        }
-        if (!end) {
-            end = data.length;
-        }
-        let offset = long_1.default.fromNumber(data[end - 1] & 0xff);
-        let tmpLongValue;
-        for (let x = end - 2; x >= start; x--) {
-            offset = offset.shiftLeft(8);
-            tmpLongValue = long_1.default.fromNumber(data[x] & 0xff);
-            offset = offset.xor(tmpLongValue);
-        }
-        return offset;
-    }
-    /**
-     * Convert big endian bytes to long
-     * @static
-     * @param {Buffer} data
-     * @param {number} [start]
-     * @param {number} [end]
-     * @returns {long}
-     * @memberof PSTUtil
-     */
-    static convertBigEndianBytesToLong(data, start, end) {
-        if (!start) {
-            start = 0;
-        }
-        if (!end) {
-            end = data.length;
-        }
-        let offset = long_1.default.ZERO;
-        for (let x = start; x < end; ++x) {
-            offset = offset.shiftLeft(8);
-            const tmpLongValue = long_1.default.fromNumber(data[x] & 0xff);
-            offset = offset.xor(tmpLongValue);
-        }
-        return offset;
-    }
-    /**
-     * Handle strings using codepages.
-     * @static
-     * @param {number} propertyId
-     * @returns
-     * @memberof PSTUtil
-     */
-    static getInternetCodePageCharset(propertyId) {
-        return this.codePages.get(propertyId);
-    }
-    /**
-     * Create JS string from buffer.
-     * @static
-     * @param {Buffer} data
-     * @param {number} stringType
-     * @param {string} codepage
-     * @returns
-     * @memberof PSTUtil
-     */
-    static createJavascriptString(data, stringType, codepage = 'utf8') {
-        // TODO - codepage is not used...
-        try {
-            if (stringType == 0x1f) {
-                // convert and trim any nulls
-                return data.toString('utf16le').replace(/\0/g, '');
-            }
-            else {
-                return iconv_lite_1.default.decode(data, codepage).toString();
-            }
-        }
-        catch (err) {
-            console.error('PSTUtil::createJavascriptString Unable to decode string\n' + err);
-            throw err;
-        }
-        return '';
-    }
-    /**
-     * Copy from one array to another
-     * @static
-     * @param {Buffer} src
-     * @param {number} srcPos
-     * @param {Buffer} dest
-     * @param {number} destPos
-     * @param {number} length
-     * @memberof PSTUtil
-     */
-    static arraycopy(src, srcPos, dest, destPos, length) {
-        // TODO FIX THIS - TOO SLOW?
-        let s = srcPos;
-        let d = destPos;
-        let i = 0;
-        while (i++ < length) {
-            dest[d++] = src[s++];
-        }
-    }
-    /**
-     * Decode a lump of data that has been encrypted with the compressible encryption
-     * @static
-     * @param {Buffer} data
-     * @returns {Buffer}
-     * @memberof PSTUtil
-     */
-    static decode(data) {
-        let temp;
-        for (let x = 0; x < data.length; x++) {
-            temp = data[x] & 0xff;
-            data[x] = this.compEnc[temp];
-        }
-        return data;
-    }
-    /**
-     * Decode a lump of data that has been encrypted with the compressible encryption
-     * @static
-     * @param {Buffer} data
-     * @returns {Buffer}
-     * @memberof PSTUtil
-     */
-    static decodeArray(data) {
-        let temp;
-        for (let x = 0; x < data.length; x++) {
-            temp = data[x] & 0xff;
-            data[x] = this.compEnc[temp];
-        }
-        return data;
-    }
-    /**
-     * Creates object based on message class
-     * https://msdn.microsoft.com/en-us/vba/outlook-vba/articles/item-types-and-message-classes
-     * @static
-     * @param {PSTFile} rootProvider
-     * @param {DescriptorIndexNode} folderIndexNode
-     * @param {PSTTableBC} table
-     * @param {Map<number, PSTDescriptorItem>} localDescriptorItems
-     * @returns {PSTMessage}
-     * @memberof PSTUtil
-     */
-    static createAppropriatePSTMessageObject(rootProvider, node, subNode, resolver, propertyFinderDelegation) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (propertyFinderDelegation === undefined) {
-                const heap = yield (0, PHUtil_1.getHeapFrom)(subNode);
-                const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, resolver);
-                const propList = yield pc.list();
-                propertyFinderDelegation = (0, PAUtil_1.createPropertyFinder)(propList);
-            }
-            const propertyFinder = propertyFinderDelegation;
-            const item = propertyFinder.findByKey(0x001a);
-            let messageClass = '';
-            if (item !== undefined && typeof item.value === 'string') {
-                messageClass = item.value;
-            }
-            switch (messageClass) {
-                case 'IPM.Note':
-                case 'IPM.Note.SMIME.MultipartSigned':
-                case 'IPM.Note.Agenda':
-                    // email message
-                    const msg = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(msg.body);
-                    // Log.debug1(msg.numberOfRecipients.toString());
-                    // Log.debug1(msg.colorCategories.toString());
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return msg;
-                case 'IPM.Appointment':
-                case 'IPM.OLE.CLASS.{00061055-0000-0000-C000-000000000046}':
-                case 'IPM.Schedule.Meeting.Canceled':
-                case 'IPM.Schedule.Meeting.Resp.Pos':
-                case 'IPM.Schedule.Meeting.Resp.Tent':
-                case 'IPM.Schedule.Meeting.Notification.Forward':
-                case 'IPM.Schedule.Meeting.Resp.Neg':
-                    // appointment
-                    // messageClass.startsWith('IPM.Schedule.Meeting')
-                    const apt = new PSTAppointment_class_1.PSTAppointment(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return apt;
-                case 'IPM.Contact':
-                    // contact
-                    const contact = new PSTContact_class_1.PSTContact(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return contact;
-                case 'IPM.Task':
-                    // task
-                    const task = new PSTTask_class_1.PSTTask(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return task;
-                case 'IPM.Activity':
-                    // journal entry
-                    const activity = new PSTActivity_class_1.PSTActivity(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return activity;
-                case 'IPM.Post.Rss':
-                    // debugger;
-                    // Rss Feed
-                    const rss = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return rss;
-                case 'IPM.DistList':
-                    // debugger;
-                    // Distribution list
-                    const dl = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return dl;
-                // return new PSTDistList(theFile, folderIndexNode, table, localDescriptorItems);
-                case 'IPM.Note.Rules.OofTemplate.Microsoft':
-                    // debugger;
-                    // Out of Office rule
-                    const oof = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return oof;
-                case 'IPM.Schedule.Meeting.Request':
-                    // Meeting request
-                    const meetReq = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return meetReq;
-                case 'REPORT.IPM.Note.NDR':
-                    // Receipt of non-delivery
-                    const ndr = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return ndr;
-                case 'IPM.StickyNote':
-                    // Sticky note
-                    const sticky = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                    // Log.debug1(JSON.stringify(msg, null, 2));
-                    return sticky;
-                case 'REPORT.IPM.Note.IPNRN':
-                    // Read receipt
-                    // debugger;
-                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.IPNRN');
-                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                case 'REPORT.IPM.Note.IPNNRN':
-                    // Not-read notification
-                    // debugger;
-                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.IPNNRN');
-                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                case 'IPM.Schedule.Meeting.Request':
-                    // Meeting request
-                    // debugger;
-                    // console.log('PSTUtil::createAppropriatePSTMessageObject IPM.Schedule.Meeting.Request');
-                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                case 'REPORT.IPM.Note.DR':
-                    // Delivery receipt
-                    // debugger;
-                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.DR');
-                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-                default:
-                    console.error('PSTUtil::createAppropriatePSTMessageObject unknown message type: ' +
-                        messageClass);
-            }
-            return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
-        });
-    }
-    /**
-     * Converts a Windows FILETIME into a {@link Date}. The Windows FILETIME structure holds a date and time associated with a
-     * file. The structure identifies a 64-bit integer specifying the number of 100-nanosecond intervals which have passed since
-     * January 1, 1601. This 64-bit value is split into the two double words stored in the structure.
-     *
-     * @static
-     * @param {long} hi
-     * @param {long} low
-     * @returns {Date}
-     * @memberof PSTUtil
-     */
-    static filetimeToDate(hi, low) {
-        const h = hi.shiftLeft(32);
-        const l = low.and(0xffffffff);
-        const filetime = h.or(l);
-        const msSince16010101 = filetime.divide(1000 * 10);
-        const epochDiff = long_1.default.fromValue('11644473600000');
-        const msSince19700101 = msSince16010101.subtract(epochDiff);
-        return new Date(msSince19700101.toNumber());
-    }
-}
-exports.PSTUtil = PSTUtil;
-// substitution table for the compressible encryption type.
-PSTUtil.compEnc = [
-    0x47,
-    0xf1,
-    0xb4,
-    0xe6,
-    0x0b,
-    0x6a,
-    0x72,
-    0x48,
-    0x85,
-    0x4e,
-    0x9e,
-    0xeb,
-    0xe2,
-    0xf8,
-    0x94,
-    0x53,
-    0xe0,
-    0xbb,
-    0xa0,
-    0x02,
-    0xe8,
-    0x5a,
-    0x09,
-    0xab,
-    0xdb,
-    0xe3,
-    0xba,
-    0xc6,
-    0x7c,
-    0xc3,
-    0x10,
-    0xdd,
-    0x39,
-    0x05,
-    0x96,
-    0x30,
-    0xf5,
-    0x37,
-    0x60,
-    0x82,
-    0x8c,
-    0xc9,
-    0x13,
-    0x4a,
-    0x6b,
-    0x1d,
-    0xf3,
-    0xfb,
-    0x8f,
-    0x26,
-    0x97,
-    0xca,
-    0x91,
-    0x17,
-    0x01,
-    0xc4,
-    0x32,
-    0x2d,
-    0x6e,
-    0x31,
-    0x95,
-    0xff,
-    0xd9,
-    0x23,
-    0xd1,
-    0x00,
-    0x5e,
-    0x79,
-    0xdc,
-    0x44,
-    0x3b,
-    0x1a,
-    0x28,
-    0xc5,
-    0x61,
-    0x57,
-    0x20,
-    0x90,
-    0x3d,
-    0x83,
-    0xb9,
-    0x43,
-    0xbe,
-    0x67,
-    0xd2,
-    0x46,
-    0x42,
-    0x76,
-    0xc0,
-    0x6d,
-    0x5b,
-    0x7e,
-    0xb2,
-    0x0f,
-    0x16,
-    0x29,
-    0x3c,
-    0xa9,
-    0x03,
-    0x54,
-    0x0d,
-    0xda,
-    0x5d,
-    0xdf,
-    0xf6,
-    0xb7,
-    0xc7,
-    0x62,
-    0xcd,
-    0x8d,
-    0x06,
-    0xd3,
-    0x69,
-    0x5c,
-    0x86,
-    0xd6,
-    0x14,
-    0xf7,
-    0xa5,
-    0x66,
-    0x75,
-    0xac,
-    0xb1,
-    0xe9,
-    0x45,
-    0x21,
-    0x70,
-    0x0c,
-    0x87,
-    0x9f,
-    0x74,
-    0xa4,
-    0x22,
-    0x4c,
-    0x6f,
-    0xbf,
-    0x1f,
-    0x56,
-    0xaa,
-    0x2e,
-    0xb3,
-    0x78,
-    0x33,
-    0x50,
-    0xb0,
-    0xa3,
-    0x92,
-    0xbc,
-    0xcf,
-    0x19,
-    0x1c,
-    0xa7,
-    0x63,
-    0xcb,
-    0x1e,
-    0x4d,
-    0x3e,
-    0x4b,
-    0x1b,
-    0x9b,
-    0x4f,
-    0xe7,
-    0xf0,
-    0xee,
-    0xad,
-    0x3a,
-    0xb5,
-    0x59,
-    0x04,
-    0xea,
-    0x40,
-    0x55,
-    0x25,
-    0x51,
-    0xe5,
-    0x7a,
-    0x89,
-    0x38,
-    0x68,
-    0x52,
-    0x7b,
-    0xfc,
-    0x27,
-    0xae,
-    0xd7,
-    0xbd,
-    0xfa,
-    0x07,
-    0xf4,
-    0xcc,
-    0x8e,
-    0x5f,
-    0xef,
-    0x35,
-    0x9c,
-    0x84,
-    0x2b,
-    0x15,
-    0xd5,
-    0x77,
-    0x34,
-    0x49,
-    0xb6,
-    0x12,
-    0x0a,
-    0x7f,
-    0x71,
-    0x88,
-    0xfd,
-    0x9d,
-    0x18,
-    0x41,
-    0x7d,
-    0x93,
-    0xd8,
-    0x58,
-    0x2c,
-    0xce,
-    0xfe,
-    0x24,
-    0xaf,
-    0xde,
-    0xb8,
-    0x36,
-    0xc8,
-    0xa1,
-    0x80,
-    0xa6,
-    0x99,
-    0x98,
-    0xa8,
-    0x2f,
-    0x0e,
-    0x81,
-    0x65,
-    0x73,
-    0xe4,
-    0xc2,
-    0xa2,
-    0x8a,
-    0xd4,
-    0xe1,
-    0x11,
-    0xd0,
-    0x08,
-    0x8b,
-    0x2a,
-    0xf2,
-    0xed,
-    0x9a,
-    0x64,
-    0x3f,
-    0xc1,
-    0x6c,
-    0xf9,
-    0xec,
-];
-PSTUtil.codePages = new Map([
-    [28596, 'iso-8859-6'],
-    [1256, 'windows-1256'],
-    [28594, 'iso-8859-4'],
-    [1257, 'windows-1257'],
-    [28592, 'iso-8859-2'],
-    [1250, 'windows-1250'],
-    [936, 'gb2312'],
-    [52936, 'hz-gb-2312'],
-    [54936, 'gb18030'],
-    [950, 'big5'],
-    [28595, 'iso-8859-5'],
-    [20866, 'koi8-r'],
-    [21866, 'koi8-u'],
-    [1251, 'windows-1251'],
-    [28597, 'iso-8859-7'],
-    [1253, 'windows-1253'],
-    [38598, 'iso-8859-8-i'],
-    [1255, 'windows-1255'],
-    [51932, 'euc-jp'],
-    [50220, 'iso-2022-jp'],
-    [50221, 'csISO2022JP'],
-    [932, 'iso-2022-jp'],
-    [949, 'ks_c_5601-1987'],
-    [51949, 'euc-kr'],
-    [28593, 'iso-8859-3'],
-    [28605, 'iso-8859-15'],
-    [874, 'windows-874'],
-    [28599, 'iso-8859-9'],
-    [1254, 'windows-1254'],
-    [65000, 'utf-7'],
-    [65001, 'utf-8'],
-    [20127, 'us-ascii'],
-    [1258, 'windows-1258'],
-    [28591, 'iso-8859-1'],
-    [1252, 'Windows-1252'],
-]);
-// maps hex codes to names for properties
-PSTUtil.propertyName = new Map([
-    [0x0002, 'PidTagAlternateRecipientAllowed'],
-    [0x0003, 'PidTagNameidStreamEntry'],
-    [0x0004, 'PidTagNameidStreamString'],
-    [0x0017, 'PidTagImportance'],
-    [0x001a, 'PidTagMessageClass'],
-    [0x0023, 'PidTagOriginatorDeliveryReportRequested'],
-    [0x0026, 'PidTagPriority'],
-    [0x0029, 'PidLidOldWhenStartWhole'],
-    [0x002b, 'PidTagRecipientReassignmentProhibited'],
-    [0x002e, 'PidTagOriginalSensitivity'],
-    [0x0036, 'PidTagSensitivity'],
-    [0x0037, 'PidTagSubject'],
-    [0x0039, 'PidTagClientSubmitTime'],
-    [0x003b, 'PidTagSentRepresentingSearchKey'],
-    [0x003f, 'PidTagReceivedByEntryId'],
-    [0x0040, 'PidTagReceivedByName'],
-    [0x0041, 'PidTagSentRepresentingEntryId'],
-    [0x0042, 'PidTagSentRepresentingName'],
-    [0x0043, 'PidTagReceivedRepresentingEntryId'],
-    [0x0044, 'PidTagReceivedRepresentingName'],
-    [0x004d, 'PidTagOriginalAuthorName'],
-    [0x0052, 'PidTagReceivedRepresentingSearchKey'],
-    [0x0057, 'PidTagMessageToMe'],
-    [0x0058, 'PidTagMessageCcMe'],
-    [0x0060, 'PidTagStartDate'],
-    [0x0061, 'PidTagEndDate'],
-    [0x0062, 'PidTagOwnerAppointmentId'],
-    [0x0063, 'PidTagResponseRequested'],
-    [0x0064, 'PidTagSentRepresentingAddressType'],
-    [0x0065, 'PidTagSentRepresentingEmailAddress'],
-    [0x0070, 'PidTagConversationTopic'],
-    [0x0071, 'PidTagConversationIndex'],
-    [0x0075, 'PidTagReceivedByAddressType'],
-    [0x0076, 'PidTagReceivedByEmailAddress'],
-    [0x0077, 'PidTagReceivedRepresentingAddressType'],
-    [0x0078, 'PidTagReceivedRepresentingEmailAddress'],
-    [0x007d, 'PidTagTransportMessageHeaders'],
-    [0x0c15, 'PidTagRecipientType'],
-    [0x0c17, 'PidTagReplyRequested'],
-    [0x0c19, 'PidTagSenderEntryId'],
-    [0x0c1a, 'PidTagSenderName'],
-    [0x0c1d, 'PidTagSenderSearchKey'],
-    [0x0c1e, 'PidTagSenderAddressType'],
-    [0x0c1f, 'PidTagSenderEmailAddress'],
-    [0x0e01, 'PidTagDeleteAfterSubmit'],
-    [0x0e02, 'PidTagDisplayBcc'],
-    [0x0e03, 'PidTagDisplayCc'],
-    [0x0e04, 'PidTagDisplayTo'],
-    [0x0e06, 'PidTagMessageDeliveryTime'],
-    [0x0e07, 'PidTagMessageFlags'],
-    [0x0e08, 'PidTagMessageSize'],
-    [0x0e0f, 'PidTagResponsibility'],
-    [0x0e20, 'PidTagAttachSize'],
-    [0x0e23, 'PidTagInternetArticleNumber'],
-    [0x0e38, 'PidTagReplFlags'],
-    [0x0e62, 'PidTagUrlCompNameSet'],
-    [0x0e79, 'PidTagTrustSender'],
-    [0x0ff9, 'PidTagRecordKey'],
-    [0x0ffe, 'PidTagObjectType'],
-    [0x0fff, 'PidTagEntryId'],
-    [0x1000, 'PidTagBody'],
-    [0x1009, 'PidTagRtfCompressed'],
-    [0x1013, 'PidTagBodyHtml'],
-    [0x1035, 'PidTagInternetMessageId'],
-    [0x1039, 'PidTagInternetReferences'],
-    [0x1042, 'PidTagInReplyToId'],
-    [0x1080, 'PidTagIconIndex'],
-    [0x1081, 'PidTagLastVerbExecuted'],
-    [0x1082, 'PidTagLastVerbExecutionTime'],
-    [0x1096, 'PidTagBlockStatus'],
-    [0x10c3, 'PidTagICalendarStartTime'],
-    [0x10c4, 'PidTagICalendarEndTime'],
-    [0x10f2, 'Unknown_10F2'],
-    [0x10f3, 'PidTagUrlCompName'],
-    [0x10f4, 'PidTagAttributeHidden'],
-    [0x10f5, 'PidTagAttributeSystem'],
-    [0x10f6, 'PidTagAttributeReadOnly'],
-    [0x3001, 'PidTagDisplayName'],
-    [0x3002, 'PidTagAddressType'],
-    [0x3003, 'PidTagEmailAddress'],
-    [0x3007, 'PidTagCreationTime'],
-    [0x3008, 'PidTagLastModificationTime'],
-    [0x300b, 'PidTagSearchKey'],
-    [0x3701, 'PidTagAttachDataBinary'],
-    [0x3702, 'PidTagAttachEncoding'],
-    [0x3703, 'PidTagAttachExtension'],
-    [0x3704, 'PidTagAttachFilename'],
-    [0x3705, 'PidTagAttachMethod'],
-    [0x3709, 'PidTagAttachRendering'],
-    [0x370b, 'PidTagRenderingPosition'],
-    [0x370e, 'PidTagAttachMimeTag'],
-    [0x370a, 'PidTagAttachTag'],
-    [0x3712, 'PidTagAttachContentId'],
-    [0x3714, 'PidTagAttachFlags'],
-    [0x3900, 'PidTagDisplayType'],
-    [0x39fe, 'PidTagPrimarySmtpAddress'],
-    [0x39ff, 'PidTag7BitDisplayName'],
-    [0x3a00, 'PidTagAccount'],
-    [0x3a08, 'PidTagBusinessTelephoneNumber'],
-    [0x3a20, 'PidTagTransmittableDisplayName'],
-    [0x3a40, 'PidTagSendRichInfo'],
-    [0x3a70, 'PidTagUserX509Certificate'],
-    [0x3a71, 'PidTagSendInternetEncoding'],
-    [0x3fde, 'PidTagInternetCodepage'],
-    [0x3ff1, 'PidTagMessageLocaleId'],
-    [0x3ffd, 'PidTagMessageCodepage'],
-    [0x3ff9, 'PidTagCreatorName'],
-    [0x4019, 'PidTagSenderFlags'],
-    [0x401a, 'PidTagSentRepresentingFlags'],
-    [0x401b, 'PidTagReceivedByFlags'],
-    [0x401c, 'PidTagReceivedRepresentingFlags'],
-    [0x403e, 'Unknown_403E'],
-    [0x4a08, 'Unknown_4A08'],
-    [0x5902, 'PidTagInternetMailOverrideFormat'],
-    [0x5909, 'PidTagMessageEditorFormat'],
-    [0x5fde, 'PidTagRecipientResourceState'],
-    [0x5fdf, 'PidTagRecipientOrder'],
-    [0x5feb, 'Unknown_5FEB'],
-    [0x5fef, 'Unknown_5FEF'],
-    [0x5ff2, 'Unknown_5FF2'],
-    [0x5ff5, 'Unknown_5FF5'],
-    [0x5ff6, 'PidTagRecipientDisplayName'],
-    [0x5ff7, 'PidTagRecipientEntryId'],
-    [0x5ffb, 'PidTagRecipientTrackStatusTime'],
-    [0x5ffd, 'PidTagRecipientFlags'],
-    [0x5fff, 'PidTagRecipientTrackStatus'],
-    [0x6001, 'PidTagNickname'],
-    [0x6610, 'Unknown_6610'],
-    [0x6614, 'Unknown_6614'],
-    [0x6617, 'Unknown_6617'],
-    [0x6619, 'PidTagUserEntryId'],
-    [0x6743, 'Unknown_6743'],
-    [0x6744, 'Unknown_6744'],
-    [0x67f2, 'PidTagLtpRowId'],
-    [0x67f3, 'PidTagLtpRowVer'],
-    [0x67f4, 'Unknown_67F4'],
-    [0x7ffa, 'PidTagAttachmentLinkId'],
-    [0x7ffb, 'PidTagExceptionStartTime'],
-    [0x7ffc, 'PidTagExceptionEndTime'],
-    [0x7ffd, 'PidTagAttachmentFlags'],
-    [0x7ffe, 'PidTagAttachmentHidden'],
-    [0x7fff, 'PidTagAttachmentContactPhoto'],
-    [0x3ffa, 'PidTagLastModifiedName_W'],
-    [0x3ffb, 'PidTagLastModifierEntryId'],
-]);
-// Heap node
-PSTUtil.NID_TYPE_HID = 0x00;
-// Internal node (section 2.4.1)
-PSTUtil.NID_TYPE_INTERNAL = 0x01;
-// Normal Folder object (PC)
-PSTUtil.NID_TYPE_NORMAL_FOLDER = 0x02;
-// Search Folder object (PC)
-PSTUtil.NID_TYPE_SEARCH_FOLDER = 0x03;
-// Normal Message object (PC)
-PSTUtil.NID_TYPE_NORMAL_MESSAGE = 0x04;
-// Attachment object (PC)
-PSTUtil.NID_TYPE_ATTACHMENT = 0x05;
-// Queue of changed objects for search Folder objects
-PSTUtil.NID_TYPE_SEARCH_UPDATE_QUEUE = 0x06;
-// Defines the search criteria for a search folder object
-PSTUtil.NID_TYPE_SEARCH_CRITERIA_OBJECT = 0x07;
-// Folder associated info (FAI) message object (PC)
-PSTUtil.NID_TYPE_ASSOC_MESSAGE = 0x08;
-// Internal, persisted view-related
-PSTUtil.NID_TYPE_CONTENTS_TABLE_INDEX = 0x0a;
-// Receive Folder object (Inbox)
-PSTUtil.NID_TYPE_RECEIVE_FOLDER_TABLE = 0x0b;
-// Outbound queue (Outbox)
-PSTUtil.NID_TYPE_OUTGOING_QUEUE_TABLE = 0x0c;
-// Hierarchy table (TC)
-PSTUtil.NID_TYPE_HIERARCHY_TABLE = 0x0d;
-// Contents table (TC)
-PSTUtil.NID_TYPE_CONTENTS_TABLE = 0x0e;
-// FAI contents table (TC)
-PSTUtil.NID_TYPE_ASSOC_CONTENTS_TABLE = 0x0f;
-// Contents table (TC) of a search folder object
-PSTUtil.NID_TYPE_SEARCH_CONTENTS_TABLE = 0x10;
-// Attachment table (TC)
-PSTUtil.NID_TYPE_ATTACHMENT_TABLE = 0x11;
-// Recipient table (TC)
-PSTUtil.NID_TYPE_RECIPIENT_TABLE = 0x12;
-// Internal, persisted view-related
-PSTUtil.NID_TYPE_SEARCH_TABLE_INDEX = 0x13;
-// LTP
-PSTUtil.NID_TYPE_LTP = 0x1f;
-/**
- * Determine if character is alphanumeric
- *
- * @static
- * @memberof PSTUtil
- */
-PSTUtil.isAlphaNumeric = (ch) => {
-    return ch.match(/^[a-z0-9]+$/i) !== null;
-};
-
-
-/***/ }),
-
-/***/ 6918:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getPropertyContext = void 0;
-const BTHeap_1 = __webpack_require__(304);
-const bTypePC = 0xBC;
-function copy(array) {
-    return array
-        .map(it => Object.assign({}, it));
-}
-function getPropertyContext(heap, resolver) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (heap.bClientSig !== bTypePC) {
-            throw new Error("bClientSig must be bTypePC");
-        }
-        const reader = heap.getReader();
-        function getRecords() {
-            return __awaiter(this, void 0, void 0, function* () {
-                try {
-                    const index_data = yield (0, BTHeap_1.getBTHeapReaderFrom)(reader, heap.userRootHnid);
-                    return yield index_data.list();
-                }
-                catch (ex) {
-                    throw new Error(`getRecords failure of hnid ${heap.userRootHnid} of ${heap} --> ${ex}`);
-                }
-            });
-        }
-        const rawProperties = (yield getRecords())
-            .map(record => {
-            const keyView = new DataView(record.key);
-            const dataView = new DataView(record.data);
-            return {
-                key: keyView.getUint16(0, true),
-                type: dataView.getUint16(0, true),
-                value: record.data.slice(2),
-            };
-        });
-        return {
-            listRaw() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    return copy(rawProperties);
-                });
-            },
-            list() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const props = [];
-                    for (let it of rawProperties) {
-                        try {
-                            props.push({
-                                key: it.key,
-                                type: it.type,
-                                value: yield resolver.resolveValueOf(it.key, it.type, it.value, reader),
-                            });
-                        }
-                        catch (ex) {
-                            throw new Error(`getPropertyContext.list() resolving property`
-                                + ` key=0x${it.key.toString(16).padStart(4, '0')}`
-                                + ` type=0x${it.type.toString(16).padStart(4, '0')}`
-                                + ` of ${heap} failure`
-                                + ` --> ${ex}`);
-                        }
-                    }
-                    return props;
-                });
-            },
-        };
-    });
-}
-exports.getPropertyContext = getPropertyContext;
-
-
-/***/ }),
-
-/***/ 8130:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PropertyTypeObject = void 0;
-/**
- * The value representation of `PT_OBJECT` type
- *
- * @see [[MS-PST]: PtypObject Properties | Microsoft Docs](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-pst/49457d57-820e-453d-bbc0-1d192a999814)
- */
-class PropertyTypeObject {
-    constructor(subNodeId, size) {
-        this._subNodeId = subNodeId;
-        this._size = size;
-    }
-    get subNodeId() {
-        return this._subNodeId;
-    }
-    get size() {
-        return this._size;
-    }
-}
-exports.PropertyTypeObject = PropertyTypeObject;
-
-
-/***/ }),
-
-/***/ 2961:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PropertyValueResolverV1 = void 0;
-const long_1 = __importDefault(__webpack_require__(1583));
-const PLUtil_1 = __webpack_require__(138);
-const PropertyTypeObject_1 = __webpack_require__(8130);
-const PSTUtil_class_1 = __webpack_require__(8391);
-const typeConverters = {};
-const PT_BOOLEAN = 0xB;
-const PT_DOUBLE = 0x5;
-const PT_LONG = 0x3;
-const PT_OBJECT = 0xD;
-const PT_LONGLONG = 0x14;
-const PT_STRING8 = 0x1E;
-const PT_UNICODE = 0x1F;
-const PT_SYSTIME = 0x40;
-const PT_CLSID = 0x48;
-const PT_SHORT = 0x2;
-const PT_FLOAT = 0x4;
-const PT_MV_UNICODE = 0x101F;
-const PT_MV_STRING8 = 0x101E;
-const PT_MV_BINARY = 0x1102;
-const PT_MV_LONG = 0x1003;
-const PT_MV_CLSID = 0x1048;
-const PT_MVPV_BINARY = 0x2102;
-typeConverters[PT_SHORT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    return arg.view.getInt16(0, true);
-});
-typeConverters[PT_FLOAT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    return arg.view.getFloat32(0, true);
-});
-typeConverters[PT_LONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    return arg.view.getInt32(0, true);
-});
-typeConverters[PT_OBJECT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const bytes = yield arg.resolveHeap(heap);
-    if (bytes !== undefined) {
-        const view = new DataView(bytes);
-        return new PropertyTypeObject_1.PropertyTypeObject(view.getUint32(0, true), view.getUint32(4, true));
-    }
-    return bytes;
-});
-typeConverters[PT_LONGLONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const bytes = yield arg.getBytes(8);
-    if (bytes !== undefined) {
-        const view = new DataView(bytes);
-        return (0, PLUtil_1.readLong)(view, 0);
-    }
-    else {
-        return undefined;
-    }
-});
-typeConverters[PT_DOUBLE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const bytes = yield arg.getBytes(8);
-    return (bytes !== undefined)
-        ? new DataView(bytes).getFloat64(0, true)
-        : undefined;
-});
-typeConverters[PT_BOOLEAN] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    return arg.view.getUint8(0) !== 0;
-});
-typeConverters[PT_STRING8] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const bytes = yield arg.resolveHeap(heap);
-    return (bytes !== undefined)
-        ? yield arg.convertAnsiString(bytes)
-        : undefined;
-});
-typeConverters[PT_UNICODE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const bytes = yield arg.resolveHeap(heap);
-    return (bytes !== undefined)
-        ? Buffer.from(bytes).toString('utf16le').replace(/\0/g, '')
-        : undefined;
-    // `.replace(/\0/g, '')` is needed to eliminate a trailing null char.
-});
-typeConverters[PT_SYSTIME] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const bytes = yield arg.getBytes(8);
-    if (bytes !== undefined) {
-        const view = new DataView(bytes);
-        return PSTUtil_class_1.PSTUtil.filetimeToDate(new long_1.default(view.getUint32(4, true)), new long_1.default(view.getUint32(0, true)));
-    }
-    else {
-        return undefined;
-    }
-});
-typeConverters[PT_CLSID] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const bytes = yield arg.resolveHeap(heap);
-    return bytes;
-});
-typeConverters[0x0102] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const bytes = yield arg.resolveHeap(heap);
-    return bytes;
-});
-typeConverters[PT_MV_UNICODE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const view = new DataView(bytes);
-            const count = view.getUint32(0, true);
-            for (let x = 0; x < count - 1; x++) {
-                const from = view.getUint32(4 + 4 * (x), true);
-                const to = view.getUint32(4 + 4 * (x + 1), true);
-                const elementBytes = bytes.slice(from, to);
-                list.push(Buffer.from(elementBytes).toString('utf16le').replace(/\0/g, ''));
-            }
-        }
-    }
-    return list;
-});
-typeConverters[PT_MV_BINARY] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const view = new DataView(bytes);
-            const count = view.getUint32(0, true);
-            for (let x = 0; x < count - 1; x++) {
-                const from = view.getUint32(4 + 4 * (x), true);
-                const to = view.getUint32(4 + 4 * (x + 1), true);
-                const elementBytes = bytes.slice(from, to);
-                list.push(elementBytes);
-            }
-        }
-    }
-    return list;
-});
-typeConverters[PT_MV_LONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const view = new DataView(bytes);
-            const count = bytes.byteLength / 4;
-            for (let x = 0; x < count; x++) {
-                list.push(view.getInt32(4 * x, true));
-            }
-        }
-    }
-    return list;
-});
-typeConverters[PT_MV_CLSID] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const count = bytes.byteLength / 16;
-            for (let x = 0; x < count; x++) {
-                const from = 16 * (x);
-                const to = 16 * (x + 1);
-                const elementBytes = bytes.slice(from, to);
-                list.push(elementBytes);
-            }
-        }
-    }
-    return list;
-});
-typeConverters[PT_MV_STRING8] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const view = new DataView(bytes);
-            const count = view.getUint32(0, true);
-            for (let x = 0; x < count - 1; x++) {
-                const from = view.getUint32(4 + 4 * (x), true);
-                const to = view.getUint32(4 + 4 * (x + 1), true);
-                const elementBytes = bytes.slice(from, to);
-                list.push(yield arg.convertAnsiString(elementBytes));
-            }
-        }
-    }
-    return list;
-});
-typeConverters[PT_MVPV_BINARY] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
-    // not sure
-    const heap = arg.view.getUint32(0, true);
-    const list = [];
-    if (heap !== 0) {
-        const bytes = yield arg.resolveHeap(heap);
-        if (bytes !== undefined) {
-            const view = new DataView(bytes);
-            const count = view.getUint32(0, true);
-            for (let x = 0; x < count - 1; x++) {
-                const from = view.getUint32(4 + 4 * (x), true);
-                const to = view.getUint32(4 + 4 * (x + 1), true);
-                const elementBytes = bytes.slice(from, to);
-                list.push(elementBytes);
-            }
-        }
-    }
-    return list;
-});
-function mixIntoOne(array) {
-    if (array.length === 0) {
-        return new ArrayBuffer(0);
-    }
-    else if (array.length === 1) {
-        return array[0];
-    }
-    else {
-        const numBytes = array.reduce((prev, it) => prev + it.byteLength, 0);
-        const one = new ArrayBuffer(numBytes);
-        const dest = new Uint8Array(one);
-        array.reduce((nextPos, source) => {
-            dest.set(new Uint8Array(source), nextPos);
-            return nextPos + source.byteLength;
-        }, 0);
-        return one;
-    }
-}
-class PropertyValueResolverV1 {
-    constructor(convertAnsiString) {
-        this.convertAnsiString = convertAnsiString;
-    }
-    resolveValueOf(key, type, value, heap) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const view = new DataView(value);
-            function resolveHeap(hnid) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    return mixIntoOne(yield heap.getHeapBuffers(hnid));
-                });
-            }
-            const converter = typeConverters[type];
-            if (converter === undefined) {
-                throw new Error(`property type 0x${type.toString(16)} is unknown. please define a typeConverter in PropertyValueResolverV1.ts`);
-            }
-            return yield converter({
-                view: view,
-                heap: heap,
-                getBytes(numBytes) {
-                    return __awaiter(this, void 0, void 0, function* () {
-                        const { byteLength } = value;
-                        if (byteLength === 4 && byteLength < numBytes) {
-                            const hnid = view.getUint32(0, true);
-                            return yield resolveHeap(hnid);
-                        }
-                        else if (byteLength !== 4 && numBytes <= byteLength) {
-                            return value.slice(0, numBytes);
-                        }
-                        else {
-                            throw new Error("dont know how to provide buffer");
-                        }
-                    });
-                },
-                resolveHeap: resolveHeap,
-                convertAnsiString: this.convertAnsiString,
-            });
-        });
-    }
-}
-exports.PropertyValueResolverV1 = PropertyValueResolverV1;
-
-
-/***/ }),
-
-/***/ 3934:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.RecurrencePattern = exports.NthOccurrence = exports.EndType = exports.PatternType = exports.RecurFrequency = void 0;
-const OFFSETS = {
-    RecurFrequency: 4,
-    PatternType: 6,
-    FirstDateTime: 10,
-    Period: 14,
-    PatternTypeSpecific: 22,
-    EndType: 22,
-    OccurrenceCount: 26,
-    FirstDOW: 30,
-    StartDate: -8,
-    EndDate: -4,
-};
-var RecurFrequency;
-(function (RecurFrequency) {
-    RecurFrequency[RecurFrequency["Daily"] = 8202] = "Daily";
-    RecurFrequency[RecurFrequency["Weekly"] = 8203] = "Weekly";
-    RecurFrequency[RecurFrequency["Monthly"] = 8204] = "Monthly";
-    RecurFrequency[RecurFrequency["Yearly"] = 8205] = "Yearly";
-})(RecurFrequency = exports.RecurFrequency || (exports.RecurFrequency = {}));
-var PatternType;
-(function (PatternType) {
-    PatternType[PatternType["Day"] = 0] = "Day";
-    PatternType[PatternType["Week"] = 1] = "Week";
-    PatternType[PatternType["Month"] = 2] = "Month";
-    PatternType[PatternType["MonthEnd"] = 4] = "MonthEnd";
-    PatternType[PatternType["MonthNth"] = 3] = "MonthNth";
-})(PatternType = exports.PatternType || (exports.PatternType = {}));
-var EndType;
-(function (EndType) {
-    EndType[EndType["AfterDate"] = 8225] = "AfterDate";
-    EndType[EndType["AfterNOccurrences"] = 8226] = "AfterNOccurrences";
-    EndType[EndType["NeverEnd"] = 8227] = "NeverEnd";
-})(EndType = exports.EndType || (exports.EndType = {}));
-var NthOccurrence;
-(function (NthOccurrence) {
-    NthOccurrence[NthOccurrence["First"] = 1] = "First";
-    NthOccurrence[NthOccurrence["Second"] = 2] = "Second";
-    NthOccurrence[NthOccurrence["Third"] = 3] = "Third";
-    NthOccurrence[NthOccurrence["Fourth"] = 4] = "Fourth";
-    NthOccurrence[NthOccurrence["Last"] = 5] = "Last";
-})(NthOccurrence = exports.NthOccurrence || (exports.NthOccurrence = {}));
-class RecurrencePattern {
-    constructor(buffer) {
-        this.buffer = buffer;
-        const bufferEnd = buffer.length;
-        let patternTypeOffset = 0;
-        this.recurFrequency = this.readInt(OFFSETS.RecurFrequency, 1);
-        this.patternType = this.readInt(OFFSETS.PatternType, 1);
-        this.firstDateTime = winToJsDate(this.readInt(OFFSETS.FirstDateTime, 2));
-        this.period = this.readInt(OFFSETS.Period, 2);
-        this.patternTypeSpecific = this.readPatternTypeSpecific(this.patternType);
-        switch (this.patternType) {
-            case PatternType.Week:
-            case PatternType.Month:
-            case PatternType.MonthEnd:
-                patternTypeOffset = 4;
-                break;
-            case PatternType.MonthNth:
-                patternTypeOffset = 8;
-                break;
-        }
-        this.endType = this.readInt(OFFSETS.EndType + patternTypeOffset, 2);
-        this.occurrenceCount = this.readInt(OFFSETS.OccurrenceCount + patternTypeOffset, 2);
-        this.firstDOW = this.readInt(OFFSETS.FirstDOW + patternTypeOffset, 2);
-        this.startDate = winToJsDate(this.readInt(bufferEnd + OFFSETS.StartDate, 2));
-        this.endDate = winToJsDate(this.readInt(bufferEnd + OFFSETS.EndDate, 2));
-    }
-    toJSON() {
-        return {
-            recurFrequency: RecurFrequency[this.recurFrequency],
-            patternType: PatternType[this.patternType],
-            firstDateTime: this.firstDateTime,
-            period: this.period,
-            patternTypeSpecific: this.patternTypeSpecific,
-            endType: EndType[this.endType],
-            occurrenceCount: this.occurrenceCount,
-            firstDOW: this.firstDOW,
-            startDate: this.startDate,
-            endDate: this.endDate,
-        };
-    }
-    readInt(offset, size) {
-        switch (size) {
-            case 1:
-                return this.buffer.readInt16LE(offset);
-            case 2:
-                return this.buffer.readInt32LE(offset);
-        }
-    }
-    readPatternTypeSpecific(type) {
-        switch (type) {
-            case PatternType.Day:
-                return null;
-            case PatternType.Week:
-                return readWeekByte(this.buffer.readInt8(OFFSETS.PatternTypeSpecific));
-            case PatternType.Month:
-            case PatternType.MonthEnd:
-                return this.readInt(OFFSETS.PatternTypeSpecific, 2);
-            case PatternType.MonthNth:
-                return {
-                    weekdays: readWeekByte(this.buffer.readInt8(OFFSETS.PatternTypeSpecific)),
-                    nth: this.readInt(OFFSETS.PatternTypeSpecific + 4, 2),
-                };
-        }
-    }
-}
-exports.RecurrencePattern = RecurrencePattern;
-function winToJsDate(dateInt) {
-    return new Date(dateInt * 60 * 1000 - 1.16444736e13); // subtract milliseconds between 1601-01-01 and 1970-01-01
-}
-function readWeekByte(byte) {
-    const weekArr = [];
-    for (let i = 0; i < 7; ++i) {
-        weekArr.push(Boolean(byte & (1 << i)));
-    }
-    return weekArr;
-}
-
-
-/***/ }),
-
-/***/ 460:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SingleAsyncProvider = void 0;
-class SingleAsyncProvider {
-    constructor() {
-        this._ready = false;
-    }
-    getOrCreate(provider) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this._ready) {
-                this._value = yield provider();
-                this._ready = true;
-            }
-            if (this._value === undefined) {
-                throw new Error("provider must provide non-undefined value");
-            }
-            return this._value;
-        });
-    }
-}
-exports.SingleAsyncProvider = SingleAsyncProvider;
-
-
-/***/ }),
-
-/***/ 1936:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getTableContext = void 0;
-const PLMisc_1 = __webpack_require__(7084);
-const bTypeTC = 0x7c;
-function copy(rows) {
-    return rows.map(it => Object.assign({}, it));
-}
-function getTableContext(heap, resolver) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (heap.bClientSig != bTypeTC) {
-            throw new Error("expected type bTypeTC");
-        }
-        const reader = heap.getReader();
-        const headerData = yield reader.getHeapBuffers(heap.userRootHnid);
-        if (headerData.length !== 1) {
-            throw new Error("table context header buffer must be single");
-        }
-        const headerView = new DataView(headerData[0]);
-        const tcSig = headerView.getUint8(0);
-        const numCols = headerView.getUint8(1);
-        const cebOffset = headerView.getUint16(6, true);
-        const numRowBytes = headerView.getUint16(8, true);
-        const hidRowIndex = headerView.getUint32(10, true);
-        const hnidRows = headerView.getUint32(14, true);
-        var tColDesc = headerData[0].slice(22);
-        const schema = Array.from((0, PLMisc_1.splitPer)(tColDesc, 8))
-            .map(it => {
-            const view = new DataView(it);
-            return {
-                type: view.getUint16(0, true),
-                key: view.getUint16(2, true),
-                ibData: view.getUint16(4, true),
-                cbData: view.getUint8(6),
-                iBit: view.getUint8(7),
-            };
-        });
-        if (numCols !== schema.length) {
-            throw new Error("schema length not matched");
-        }
-        if (tcSig !== 0x7c) {
-            throw new Error("tcSig is not 0x7c");
-        }
-        //const min_size = schema.reduce((accum, it) => accum + it.cbData, 0);
-        //const rowIndex = getBTHeapReaderFrom(reader, hidRowIndex);
-        const rows_pages = (hnidRows !== 0)
-            ? yield reader.getHeapBuffers(hnidRows)
-            : [];
-        //const data2 = await reader.getHeapBuffers(offset2);
-        const rows_per_page = (rows_pages.length !== 0)
-            ? Math.floor(rows_pages[0].byteLength / numRowBytes)
-            : 0;
-        function get_record(record_index) {
-            const page_index = (record_index / rows_per_page) | 0;
-            const heap_index = (record_index % rows_per_page) | 0;
-            const buffer = rows_pages[page_index].slice(numRowBytes * (heap_index + 0), numRowBytes * (heap_index + 1));
-            if (buffer.byteLength !== numRowBytes) {
-                throw new Error(`get_record(${record_index}) is reaching EOF while reading record. The heap is ${reader}`);
-            }
-            const ceb = [];
-            {
-                const rgCEB = new Uint8Array(buffer.slice(cebOffset));
-                for (let x = 0; x < numCols; x++) {
-                    ceb.push((rgCEB[(x / 8) | 0] & (1 << (7 - (x % 8)))) != 0);
-                }
-            }
-            return {
-                buffer,
-                ceb,
-            };
-        }
-        const count = rows_pages.reduce((accum, it) => (accum + it.byteLength / numRowBytes) | 0, 0);
-        function listRaw(index) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const record = get_record(index);
-                const list = [];
-                for (let column of schema) {
-                    list.push({
-                        key: column.key,
-                        type: column.type,
-                        value: record.ceb[column.iBit]
-                            ? record.buffer.slice(column.ibData, column.ibData + column.cbData)
-                            : new ArrayBuffer(0),
-                    });
-                }
-                return list;
-            });
-        }
-        function list(record) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const rawProps = yield listRaw(record);
-                const list = [];
-                for (let rawProp of rawProps) {
-                    try {
-                        list.push({
-                            key: rawProp.key,
-                            type: rawProp.type,
-                            value: (rawProp.value.byteLength !== 0)
-                                ? yield resolver.resolveValueOf(rawProp.key, rawProp.type, rawProp.value, reader)
-                                : undefined
-                        });
-                    }
-                    catch (ex) {
-                        throw new Error(`getTableContext.list(rowIndex=${record}) resolving property`
-                            + ` key=0x${rawProp.key.toString(16).padStart(4, '0')}`
-                            + ` type=0x${rawProp.type.toString(16).padStart(4, '0')}`
-                            + ` of ${heap} failure`
-                            + ` --> ${ex}`);
-                    }
-                }
-                return list;
-            });
-        }
-        const rows = [];
-        for (let x = 0; x < count; x++) {
-            rows.push({
-                listRaw() {
-                    return __awaiter(this, void 0, void 0, function* () {
-                        return yield listRaw(x);
-                    });
-                },
-                list() {
-                    return __awaiter(this, void 0, void 0, function* () {
-                        return yield list(x);
-                    });
-                },
-            });
-        }
-        return {
-            rows() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    return copy(rows);
-                });
-            },
-        };
-    });
-}
-exports.getTableContext = getTableContext;
-
-
-/***/ }),
-
-/***/ 7795:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PropertyTypeObject = exports.PSTObject = exports.PSTMessageStore = exports.PSTAppointment = exports.PSTContact = exports.openPst = exports.openPstFile = exports.PSTFolder = exports.PSTMessage = exports.PSTAttachment = exports.PSTRecipient = exports.PSTTask = exports.PSTFile = void 0;
-var PSTFile_class_1 = __webpack_require__(7994);
-Object.defineProperty(exports, "PSTFile", ({ enumerable: true, get: function () { return PSTFile_class_1.PSTFile; } }));
-var PSTTask_class_1 = __webpack_require__(8347);
-Object.defineProperty(exports, "PSTTask", ({ enumerable: true, get: function () { return PSTTask_class_1.PSTTask; } }));
-var PSTRecipient_class_1 = __webpack_require__(7755);
-Object.defineProperty(exports, "PSTRecipient", ({ enumerable: true, get: function () { return PSTRecipient_class_1.PSTRecipient; } }));
-var PSTAttachment_class_1 = __webpack_require__(7886);
-Object.defineProperty(exports, "PSTAttachment", ({ enumerable: true, get: function () { return PSTAttachment_class_1.PSTAttachment; } }));
-var PSTMessage_class_1 = __webpack_require__(9015);
-Object.defineProperty(exports, "PSTMessage", ({ enumerable: true, get: function () { return PSTMessage_class_1.PSTMessage; } }));
-var PSTFolder_class_1 = __webpack_require__(2158);
-Object.defineProperty(exports, "PSTFolder", ({ enumerable: true, get: function () { return PSTFolder_class_1.PSTFolder; } }));
-var openPstFile_1 = __webpack_require__(2550);
-Object.defineProperty(exports, "openPstFile", ({ enumerable: true, get: function () { return openPstFile_1.openPstFile; } }));
-Object.defineProperty(exports, "openPst", ({ enumerable: true, get: function () { return openPstFile_1.openPst; } }));
-var PSTContact_class_1 = __webpack_require__(672);
-Object.defineProperty(exports, "PSTContact", ({ enumerable: true, get: function () { return PSTContact_class_1.PSTContact; } }));
-var PSTAppointment_class_1 = __webpack_require__(9944);
-Object.defineProperty(exports, "PSTAppointment", ({ enumerable: true, get: function () { return PSTAppointment_class_1.PSTAppointment; } }));
-var PSTMessageStore_class_1 = __webpack_require__(8521);
-Object.defineProperty(exports, "PSTMessageStore", ({ enumerable: true, get: function () { return PSTMessageStore_class_1.PSTMessageStore; } }));
-var PSTObject_class_1 = __webpack_require__(3563);
-Object.defineProperty(exports, "PSTObject", ({ enumerable: true, get: function () { return PSTObject_class_1.PSTObject; } }));
-var PropertyTypeObject_1 = __webpack_require__(8130);
-Object.defineProperty(exports, "PropertyTypeObject", ({ enumerable: true, get: function () { return PropertyTypeObject_1.PropertyTypeObject; } }));
-
-
-/***/ }),
-
-/***/ 6730:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.msftUuidStringify = exports.toHex1 = void 0;
-const hex = "0123456789abcdef";
-/**
- * byte to lower case hex string
- *
- * @internal
- */
-function toHex1(value) {
-    return hex[(value >> 4) & 15]
-        + hex[(value) & 15];
-}
-exports.toHex1 = toHex1;
-/**
- * Variant 2 UUIDs, historically used in Microsoft's COM/OLE libraries,
- * use a mixed-endian format, whereby the first three components of the UUID are little-endian,
- * and the last two are big-endian.
- * For example, `00112233-4455-6677-8899-aabbccddeeff` is encoded as the bytes
- * `33 22 11 00 55 44 77 66 88 99 aa bb cc dd ee ff`.
- *
- * @see https://en.wikipedia.org/wiki/Universally_unique_identifier
- * @internal
- */
-function msftUuidStringify(array, offset) {
-    return ""
-        + toHex1(array[offset + 3])
-        + toHex1(array[offset + 2])
-        + toHex1(array[offset + 1])
-        + toHex1(array[offset + 0])
-        + "-"
-        + toHex1(array[offset + 5])
-        + toHex1(array[offset + 4])
-        + "-"
-        + toHex1(array[offset + 7])
-        + toHex1(array[offset + 6])
-        + "-"
-        + toHex1(array[offset + 8])
-        + toHex1(array[offset + 9])
-        + "-"
-        + toHex1(array[offset + 10])
-        + toHex1(array[offset + 11])
-        + toHex1(array[offset + 12])
-        + toHex1(array[offset + 13])
-        + toHex1(array[offset + 14])
-        + toHex1(array[offset + 15]);
-}
-exports.msftUuidStringify = msftUuidStringify;
-
-
-/***/ }),
-
-/***/ 2550:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.openPst = exports.openPstFile = void 0;
-const PSTFile_class_1 = __webpack_require__(7994);
-const fs_1 = __importDefault(__webpack_require__(7311));
-const PLUtil_1 = __webpack_require__(138);
-const PropertyValueResolverV1_1 = __webpack_require__(2961);
-const iconv_lite_1 = __importDefault(__webpack_require__(4914));
-const PAUtil_1 = __webpack_require__(3825);
-/**
- * Open pst/ost file from os file path.
- *
- * @param path os file path.
- * @param opts options
- * @returns
- */
-function openPstFile(path, opts) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const file = yield fs_1.default.promises.open(path, "r");
-        function readFile(buffer, offset, length, position) {
-            return __awaiter(this, void 0, void 0, function* () {
-                const view = new Uint8Array(buffer);
-                const { bytesRead } = yield file.read(view, offset, length, position);
-                return bytesRead;
-            });
-        }
-        return yield openPst({
-            readFile,
-            close: () => __awaiter(this, void 0, void 0, function* () {
-                yield file.close();
-            }),
-        }, opts);
-    });
-}
-exports.openPstFile = openPstFile;
-/**
- * Open pst/ost file using user defined callback.
- *
- * @param api reader callback
- * @param opts options
- * @returns
- */
-function openPst(api, opts) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const lowPst = yield (0, PLUtil_1.openLowPst)(api);
-        const convertAnsiString = (opts && opts.convertAnsiString)
-            || ((array) => __awaiter(this, void 0, void 0, function* () {
-                return iconv_lite_1.default.decode(Buffer.from(array), (opts && opts.ansiEncoding) || "latin1");
-            }));
-        const resolver = new PropertyValueResolverV1_1.PropertyValueResolverV1(convertAnsiString);
-        const nodeMap = yield (0, PAUtil_1.processNameToIDMap)(yield lowPst.getOneNodeByOrError(97), resolver);
-        return new PSTFile_class_1.PSTFile(lowPst, nodeMap, opts);
-    });
-}
-exports.openPst = openPst;
-
-
-/***/ }),
-
 /***/ 6951:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -7843,7 +11,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PItem = exports.PFolder = exports.PRoot = exports.wrapPstFile = void 0;
-const pst_extractor_1 = __webpack_require__(7795);
+const pst_extractor_1 = __webpack_require__(5861);
 const mail_composer_1 = __importDefault(__webpack_require__(4453));
 const utils_1 = __webpack_require__(5007);
 const vLines_1 = __webpack_require__(495);
@@ -68085,7 +60253,7 @@ module.exports = setAttributesWithoutAttributes;
 
 /***/ }),
 
-/***/ 3380:
+/***/ 7795:
 /***/ ((module) => {
 
 "use strict";
@@ -70486,6 +62654,7844 @@ module.exports = "data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%
 /***/ (() => {
 
 /* (ignored) */
+
+/***/ }),
+
+/***/ 8832:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getBTHeapReaderFrom = void 0;
+function getBTHeapReaderFrom(heap, hnid) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const header = yield heap.getHeapBuffers(hnid);
+        if (header.length !== 1) {
+            throw new Error(`btree heap buffer must be single`);
+        }
+        const headerView = new DataView(header[0]);
+        const bTypeBTH = 0xB5;
+        if (headerView.getUint8(0) !== bTypeBTH) {
+            throw new Error(`signature must be bTypeBTH`);
+        }
+        const cbKey = headerView.getUint8(1);
+        const cbEnt = headerView.getUint8(2);
+        const bIdxLevels = headerView.getUint8(3);
+        const hidRoot = headerView.getUint32(4, true);
+        const list = [];
+        function recursive(hid, level) {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (hid !== 0) {
+                    if (level === 0) {
+                        const recordSize = cbKey + cbEnt;
+                        const records = (yield heap.getHeapBuffers(hid));
+                        if (records.length !== 1) {
+                            throw new Error(`btree heap record must be single`);
+                        }
+                        const record = records[0];
+                        const numRecords = Math.floor(record.byteLength / recordSize);
+                        for (let x = 0; x < numRecords; x++) {
+                            const top = recordSize * x;
+                            list.push({
+                                key: record.slice(top, top + cbKey),
+                                data: record.slice(top + cbKey, top + recordSize),
+                            });
+                        }
+                    }
+                    else {
+                        const recordSize = cbKey + 4;
+                        const records = (yield heap.getHeapBuffers(hid));
+                        if (records.length !== 1) {
+                            throw new Error(`btree intermediate record must be single`);
+                        }
+                        const record = records[0];
+                        const recordView = new DataView(record);
+                        const numRecords = Math.floor(record.byteLength / recordSize);
+                        for (let x = 0; x < numRecords; x++) {
+                            const top = recordSize * x;
+                            const hidInner = recordView.getUint32(top + cbKey, true);
+                            yield recursive(hidInner, level - 1);
+                        }
+                    }
+                }
+            });
+        }
+        yield recursive(hidRoot, bIdxLevels);
+        return {
+            list() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return list;
+                });
+            },
+        };
+    });
+}
+exports.getBTHeapReaderFrom = getBTHeapReaderFrom;
+
+
+/***/ }),
+
+/***/ 6868:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CollectionAsyncProvider = void 0;
+const KeyedDelay_1 = __webpack_require__(3568);
+/**
+ * @internal
+ */
+class CollectionAsyncProvider {
+    constructor(count, itemProvider) {
+        this._cache = new KeyedDelay_1.KeyedDelay();
+        this._count = count;
+        this._itemProvider = itemProvider;
+    }
+    get count() {
+        return this._count;
+    }
+    get(index) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this._cache.getOrCreate(index.toString(), () => __awaiter(this, void 0, void 0, function* () { return yield this._itemProvider(index); }));
+        });
+    }
+    /**
+     * get all of the children
+     */
+    all() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const array = [];
+            for (let x = 0; x < this._count; x++) {
+                array.push(yield this.get(x));
+            }
+            return array;
+        });
+    }
+}
+exports.CollectionAsyncProvider = CollectionAsyncProvider;
+
+
+/***/ }),
+
+/***/ 3568:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.KeyedDelay = void 0;
+/**
+ * @internal
+ */
+class KeyedDelay {
+    constructor() {
+        this._map = new Map();
+    }
+    getOrCreate(key, provider) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._map.has(key)) {
+                const value = this._map.get(key);
+                if (value === undefined) {
+                    throw new Error("provider must provide a non-undefined value");
+                }
+                return value;
+            }
+            else {
+                const value = yield provider();
+                this._map.set(key, value);
+                return value;
+            }
+        });
+    }
+}
+exports.KeyedDelay = KeyedDelay;
+
+
+/***/ }),
+
+/***/ 378:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LZFu = void 0;
+const PSTUtil_class_1 = __webpack_require__(6621);
+// An implementation of the LZFu algorithm to decompress RTF content
+class LZFu {
+    /**
+     * Decompress the buffer of RTF content using LZ
+     * @static
+     * @param {Buffer} data
+     * @returns {string}
+     * @memberof LZFu
+     */
+    static decode(data) {
+        // const compressedSize: number = PSTUtil.convertLittleEndianBytesToLong(
+        //   data,
+        //   0,
+        //   4
+        // ).toNumber()
+        const uncompressedSize = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 4, 8).toNumber();
+        const compressionSig = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 8, 12).toNumber();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const compressedCRC = PSTUtil_class_1.PSTUtil.convertLittleEndianBytesToLong(data, 12, 16).toNumber();
+        if (compressionSig == 0x75465a4c) {
+            // we are compressed...
+            const output = Buffer.alloc(uncompressedSize);
+            let outputPosition = 0;
+            const lzBuffer = Buffer.alloc(4096);
+            // preload our buffer.
+            try {
+                const bytes = Buffer.from(LZFu.LZFU_HEADER); //getBytes("US-ASCII");
+                PSTUtil_class_1.PSTUtil.arraycopy(bytes, 0, lzBuffer, 0, LZFu.LZFU_HEADER.length);
+            }
+            catch (err) {
+                console.error('LZFu::decode cant preload buffer\n' + err);
+                throw err;
+            }
+            let bufferPosition = LZFu.LZFU_HEADER.length;
+            let currentDataPosition = 16;
+            // next byte is the flags,
+            while (currentDataPosition < data.length - 2 &&
+                outputPosition < output.length) {
+                let flags = data[currentDataPosition++] & 0xff;
+                for (let x = 0; x < 8 && outputPosition < output.length; x++) {
+                    const isRef = (flags & 1) == 1;
+                    flags >>= 1;
+                    if (isRef) {
+                        // get the starting point for the buffer and the length to read
+                        const refOffsetOrig = data[currentDataPosition++] & 0xff;
+                        const refSizeOrig = data[currentDataPosition++] & 0xff;
+                        const refOffset = (refOffsetOrig << 4) | (refSizeOrig >>> 4);
+                        const refSize = (refSizeOrig & 0xf) + 2;
+                        try {
+                            // copy the data from the buffer
+                            let index = refOffset;
+                            for (let y = 0; y < refSize && outputPosition < output.length; y++) {
+                                output[outputPosition++] = lzBuffer[index];
+                                lzBuffer[bufferPosition] = lzBuffer[index];
+                                bufferPosition++;
+                                bufferPosition %= 4096;
+                                ++index;
+                                index %= 4096;
+                            }
+                        }
+                        catch (err) {
+                            console.error('LZFu::decode copy the data from the buffer\n' + err);
+                            throw err;
+                        }
+                    }
+                    else {
+                        // copy the byte over
+                        lzBuffer[bufferPosition] = data[currentDataPosition];
+                        bufferPosition++;
+                        bufferPosition %= 4096;
+                        output[outputPosition++] = data[currentDataPosition++];
+                    }
+                }
+            }
+            if (outputPosition != uncompressedSize) {
+                throw new Error('LZFu::constructor decode Error decompressing RTF');
+            }
+            return new String(output).trim();
+        }
+        else if (compressionSig == 0x414c454d) {
+            // we are not compressed!
+            // just return the rest of the contents as a string
+            const output = Buffer.alloc(data.length - 16);
+            PSTUtil_class_1.PSTUtil.arraycopy(data, 16, output, 0, data.length - 16);
+            return new String(output).trim();
+        }
+        return '';
+    }
+}
+exports.LZFu = LZFu;
+LZFu.LZFU_HEADER = '{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\r\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx';
+
+
+/***/ }),
+
+/***/ 9774:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NodeMap = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const long_1 = __importDefault(__webpack_require__(1583));
+/**
+ * Stores node names (both alpha and numeric) in node maps for quick lookup.
+ * @export
+ * @class NodeMap
+ */
+class NodeMap {
+    constructor() {
+        this.nameToId = new Map();
+        this.idToNumericName = new Map();
+        this.idToStringName = new Map();
+    }
+    /**
+     * Set a node into the map.
+     * @param {*} key
+     * @param {number} propId
+     * @param {number} [idx]
+     * @memberof NodeMap
+     */
+    setId(key, propId, idx) {
+        if (typeof key === 'number' && idx !== undefined) {
+            const lkey = this.transformKey(key, idx);
+            this.nameToId.set(lkey.toString(), propId);
+            this.idToNumericName.set(propId, lkey);
+            // console.log('NodeMap::setId: propId = ' + propId + ', lkey = ' + lkey.toString());
+        }
+        else if (typeof key === 'string') {
+            this.nameToId.set(key, propId);
+            this.idToStringName.set(propId, key);
+            // console.log('NodeMap::setId: propId = ' + propId + ', key = ' + key);
+        }
+        else {
+            throw new Error('NodeMap::setId bad param type ' + typeof key);
+        }
+    }
+    /**
+     * Get a node from the map.
+     * @param {*} key
+     * @param {number} [idx]
+     * @returns {number}
+     * @memberof NodeMap
+     */
+    getId(key, idx) {
+        let id = undefined;
+        if (typeof key === 'number' && idx) {
+            id = this.nameToId.get(this.transformKey(key, idx).toString());
+        }
+        else if (typeof key === 'string') {
+            id = this.nameToId.get(key);
+        }
+        else {
+            throw new Error('NodeMap::getId bad param type ' + typeof key);
+        }
+        if (!id) {
+            return -1;
+        }
+        return id;
+    }
+    /**
+     * Get a node from the map.
+     * @param {number} propId
+     * @returns {long}
+     * @memberof NodeMap
+     */
+    getNumericName(propId) {
+        const lkey = this.idToNumericName.get(propId);
+        if (!lkey) {
+            // console.log("NodeMap::getNumericName Name to Id mapping not found, propId = " + propId);
+        }
+        return lkey;
+    }
+    transformKey(key, idx) {
+        let lidx = long_1.default.fromNumber(idx);
+        lidx = lidx.shiftLeft(32);
+        lidx = lidx.or(key);
+        return lidx;
+    }
+}
+exports.NodeMap = NodeMap;
+
+
+/***/ }),
+
+/***/ 9164:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.OutlookProperties = void 0;
+/* eslint-disable @typescript-eslint/camelcase */
+// See PSTMessage.class for details on these properties
+var OutlookProperties;
+(function (OutlookProperties) {
+    OutlookProperties[OutlookProperties["PSETID_Common"] = 1] = "PSETID_Common";
+    OutlookProperties[OutlookProperties["PSETID_Address"] = 2] = "PSETID_Address";
+    OutlookProperties[OutlookProperties["PSETID_Appointment"] = 4] = "PSETID_Appointment";
+    OutlookProperties[OutlookProperties["PSETID_Meeting"] = 5] = "PSETID_Meeting";
+    OutlookProperties[OutlookProperties["PSETID_Log"] = 6] = "PSETID_Log";
+    OutlookProperties[OutlookProperties["PR_RTF_COMPRESSED"] = 4105] = "PR_RTF_COMPRESSED";
+    OutlookProperties[OutlookProperties["PR_NON_RECEIPT_NOTIFICATION_REQUESTED"] = 3078] = "PR_NON_RECEIPT_NOTIFICATION_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED"] = 3080] = "PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_RECIPIENT_TYPE"] = 3093] = "PR_RECIPIENT_TYPE";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_CODEPAGE"] = 16381] = "PR_MESSAGE_CODEPAGE";
+    OutlookProperties[OutlookProperties["PR_INTERNET_CPID"] = 16350] = "PR_INTERNET_CPID";
+    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_CRC"] = 4102] = "PR_RTF_SYNC_BODY_CRC";
+    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_COUNT"] = 4103] = "PR_RTF_SYNC_BODY_COUNT";
+    OutlookProperties[OutlookProperties["PR_RTF_SYNC_BODY_TAG"] = 4104] = "PR_RTF_SYNC_BODY_TAG";
+    OutlookProperties[OutlookProperties["PR_RTF_SYNC_PREFIX_COUNT"] = 4112] = "PR_RTF_SYNC_PREFIX_COUNT";
+    OutlookProperties[OutlookProperties["PR_RTF_SYNC_TRAILING_COUNT"] = 4113] = "PR_RTF_SYNC_TRAILING_COUNT";
+    OutlookProperties[OutlookProperties["PR_BODY"] = 4096] = "PR_BODY";
+    OutlookProperties[OutlookProperties["PR_BODY_HTML"] = 4115] = "PR_BODY_HTML";
+    OutlookProperties[OutlookProperties["PR_IMPORTANCE"] = 23] = "PR_IMPORTANCE";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_CLASS"] = 26] = "PR_MESSAGE_CLASS";
+    OutlookProperties[OutlookProperties["PR_SUBJECT"] = 55] = "PR_SUBJECT";
+    OutlookProperties[OutlookProperties["PR_CLIENT_SUBMIT_TIME"] = 57] = "PR_CLIENT_SUBMIT_TIME";
+    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_NAME"] = 64] = "PR_RECEIVED_BY_NAME";
+    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_NAME"] = 66] = "PR_SENT_REPRESENTING_NAME";
+    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_ADDRTYPE"] = 100] = "PR_SENT_REPRESENTING_ADDRTYPE";
+    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_EMAIL_ADDRESS"] = 101] = "PR_SENT_REPRESENTING_EMAIL_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_CONVERSATION_TOPIC"] = 112] = "PR_CONVERSATION_TOPIC";
+    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_ADDRTYPE"] = 117] = "PR_RECEIVED_BY_ADDRTYPE";
+    OutlookProperties[OutlookProperties["PR_RECEIVED_BY_EMAIL_ADDRESS"] = 118] = "PR_RECEIVED_BY_EMAIL_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_TRANSPORT_MESSAGE_HEADERS"] = 125] = "PR_TRANSPORT_MESSAGE_HEADERS";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_FLAGS"] = 3591] = "PR_MESSAGE_FLAGS";
+    OutlookProperties[OutlookProperties["PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED"] = 35] = "PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_PRIORITY"] = 38] = "PR_PRIORITY";
+    OutlookProperties[OutlookProperties["PR_READ_RECEIPT_REQUESTED"] = 41] = "PR_READ_RECEIPT_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_RECIPIENT_REASSIGNMENT_PROHIBITED"] = 43] = "PR_RECIPIENT_REASSIGNMENT_PROHIBITED";
+    OutlookProperties[OutlookProperties["PR_SENSITIVITY"] = 54] = "PR_SENSITIVITY";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_SENSITIVITY"] = 46] = "PR_ORIGINAL_SENSITIVITY";
+    OutlookProperties[OutlookProperties["PR_SENT_REPRESENTING_SEARCH_KEY"] = 59] = "PR_SENT_REPRESENTING_SEARCH_KEY";
+    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_NAME"] = 68] = "PR_RCVD_REPRESENTING_NAME";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_SUBJECT"] = 73] = "PR_ORIGINAL_SUBJECT";
+    OutlookProperties[OutlookProperties["PR_REPLY_RECIPIENT_NAMES"] = 80] = "PR_REPLY_RECIPIENT_NAMES";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_TO_ME"] = 87] = "PR_MESSAGE_TO_ME";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_CC_ME"] = 88] = "PR_MESSAGE_CC_ME";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_RECIP_ME"] = 89] = "PR_MESSAGE_RECIP_ME";
+    OutlookProperties[OutlookProperties["PR_RESPONSE_REQUESTED"] = 99] = "PR_RESPONSE_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_BCC"] = 114] = "PR_ORIGINAL_DISPLAY_BCC";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_CC"] = 115] = "PR_ORIGINAL_DISPLAY_CC";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_TO"] = 116] = "PR_ORIGINAL_DISPLAY_TO";
+    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_ADDRTYPE"] = 119] = "PR_RCVD_REPRESENTING_ADDRTYPE";
+    OutlookProperties[OutlookProperties["PR_RCVD_REPRESENTING_EMAIL_ADDRESS"] = 120] = "PR_RCVD_REPRESENTING_EMAIL_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_REPLY_REQUESTED"] = 3095] = "PR_REPLY_REQUESTED";
+    OutlookProperties[OutlookProperties["PR_SENDER_ENTRYID"] = 3097] = "PR_SENDER_ENTRYID";
+    OutlookProperties[OutlookProperties["PR_SENDER_NAME"] = 3098] = "PR_SENDER_NAME";
+    OutlookProperties[OutlookProperties["PR_SENDER_ADDRTYPE"] = 3102] = "PR_SENDER_ADDRTYPE";
+    OutlookProperties[OutlookProperties["PR_SENDER_EMAIL_ADDRESS"] = 3103] = "PR_SENDER_EMAIL_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_SIZE"] = 3592] = "PR_MESSAGE_SIZE";
+    OutlookProperties[OutlookProperties["PR_INTERNET_ARTICLE_NUMBER"] = 3619] = "PR_INTERNET_ARTICLE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_PRIMARY_SEND_ACCOUNT"] = 3624] = "PR_PRIMARY_SEND_ACCOUNT";
+    OutlookProperties[OutlookProperties["PR_NEXT_SEND_ACCT"] = 3625] = "PR_NEXT_SEND_ACCT";
+    OutlookProperties[OutlookProperties["PR_OBJECT_TYPE"] = 4094] = "PR_OBJECT_TYPE";
+    OutlookProperties[OutlookProperties["PR_DELETE_AFTER_SUBMIT"] = 3585] = "PR_DELETE_AFTER_SUBMIT";
+    OutlookProperties[OutlookProperties["PR_RESPONSIBILITY"] = 3599] = "PR_RESPONSIBILITY";
+    OutlookProperties[OutlookProperties["PR_RTF_IN_SYNC"] = 3615] = "PR_RTF_IN_SYNC";
+    OutlookProperties[OutlookProperties["PR_DISPLAY_BCC"] = 3586] = "PR_DISPLAY_BCC";
+    OutlookProperties[OutlookProperties["PR_DISPLAY_CC"] = 3587] = "PR_DISPLAY_CC";
+    OutlookProperties[OutlookProperties["PR_DISPLAY_TO"] = 3588] = "PR_DISPLAY_TO";
+    OutlookProperties[OutlookProperties["PR_MESSAGE_DELIVERY_TIME"] = 3590] = "PR_MESSAGE_DELIVERY_TIME";
+    OutlookProperties[OutlookProperties["PR_INTERNET_MESSAGE_ID"] = 4149] = "PR_INTERNET_MESSAGE_ID";
+    OutlookProperties[OutlookProperties["PR_IN_REPLY_TO_ID"] = 4162] = "PR_IN_REPLY_TO_ID";
+    OutlookProperties[OutlookProperties["PR_INTERNET_RETURN_PATH"] = 4166] = "PR_INTERNET_RETURN_PATH";
+    OutlookProperties[OutlookProperties["PR_ICON_INDEX"] = 4224] = "PR_ICON_INDEX";
+    OutlookProperties[OutlookProperties["PR_LAST_VERB_EXECUTED"] = 4225] = "PR_LAST_VERB_EXECUTED";
+    OutlookProperties[OutlookProperties["PR_LAST_VERB_EXECUTION_TIME"] = 4226] = "PR_LAST_VERB_EXECUTION_TIME";
+    OutlookProperties[OutlookProperties["PR_URL_COMP_NAME"] = 4339] = "PR_URL_COMP_NAME";
+    OutlookProperties[OutlookProperties["PR_ATTR_HIDDEN"] = 4340] = "PR_ATTR_HIDDEN";
+    OutlookProperties[OutlookProperties["PR_EMAIL_ADDRESS"] = 12291] = "PR_EMAIL_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_ADDRTYPE"] = 12290] = "PR_ADDRTYPE";
+    OutlookProperties[OutlookProperties["PR_COMMENT"] = 12292] = "PR_COMMENT";
+    OutlookProperties[OutlookProperties["PR_CREATION_TIME"] = 12295] = "PR_CREATION_TIME";
+    OutlookProperties[OutlookProperties["PR_LAST_MODIFICATION_TIME"] = 12296] = "PR_LAST_MODIFICATION_TIME";
+    OutlookProperties[OutlookProperties["PR_ATTACH_DATA_BIN"] = 14081] = "PR_ATTACH_DATA_BIN";
+    OutlookProperties[OutlookProperties["PR_ATTACH_SIZE"] = 3616] = "PR_ATTACH_SIZE";
+    OutlookProperties[OutlookProperties["PR_ATTACH_FILENAME"] = 14084] = "PR_ATTACH_FILENAME";
+    OutlookProperties[OutlookProperties["PR_ATTACH_NUM"] = 3617] = "PR_ATTACH_NUM";
+    OutlookProperties[OutlookProperties["PR_ATTACH_METHOD"] = 14085] = "PR_ATTACH_METHOD";
+    OutlookProperties[OutlookProperties["PR_ATTACH_LONG_FILENAME"] = 14087] = "PR_ATTACH_LONG_FILENAME";
+    OutlookProperties[OutlookProperties["PR_ATTACH_PATHNAME"] = 14088] = "PR_ATTACH_PATHNAME";
+    OutlookProperties[OutlookProperties["PR_RENDERING_POSITION"] = 14091] = "PR_RENDERING_POSITION";
+    OutlookProperties[OutlookProperties["PR_ATTACH_LONG_PATHNAME"] = 14093] = "PR_ATTACH_LONG_PATHNAME";
+    OutlookProperties[OutlookProperties["PR_ATTACH_MIME_TAG"] = 14094] = "PR_ATTACH_MIME_TAG";
+    OutlookProperties[OutlookProperties["PR_ATTACH_MIME_SEQUENCE"] = 14096] = "PR_ATTACH_MIME_SEQUENCE";
+    OutlookProperties[OutlookProperties["PR_ATTACH_CONTENT_ID"] = 14098] = "PR_ATTACH_CONTENT_ID";
+    OutlookProperties[OutlookProperties["PR_ATTACH_FLAGS"] = 14100] = "PR_ATTACH_FLAGS";
+    OutlookProperties[OutlookProperties["PR_ACCOUNT"] = 14848] = "PR_ACCOUNT";
+    OutlookProperties[OutlookProperties["PR_CALLBACK_TELEPHONE_NUMBER"] = 14850] = "PR_CALLBACK_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_GENERATION"] = 14853] = "PR_GENERATION";
+    OutlookProperties[OutlookProperties["PR_GIVEN_NAME"] = 14854] = "PR_GIVEN_NAME";
+    OutlookProperties[OutlookProperties["PR_GOVERNMENT_ID_NUMBER"] = 14855] = "PR_GOVERNMENT_ID_NUMBER";
+    OutlookProperties[OutlookProperties["PR_BUSINESS_TELEPHONE_NUMBER"] = 14856] = "PR_BUSINESS_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_HOME_TELEPHONE_NUMBER"] = 14857] = "PR_HOME_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_INITIALS"] = 14858] = "PR_INITIALS";
+    OutlookProperties[OutlookProperties["PR_KEYWORD"] = 14859] = "PR_KEYWORD";
+    OutlookProperties[OutlookProperties["PR_LANGUAGE"] = 14860] = "PR_LANGUAGE";
+    OutlookProperties[OutlookProperties["PR_LOCATION"] = 14861] = "PR_LOCATION";
+    OutlookProperties[OutlookProperties["PR_MHS_COMMON_NAME"] = 14863] = "PR_MHS_COMMON_NAME";
+    OutlookProperties[OutlookProperties["PR_ORGANIZATIONAL_ID_NUMBER"] = 14864] = "PR_ORGANIZATIONAL_ID_NUMBER";
+    OutlookProperties[OutlookProperties["PR_SURNAME"] = 14865] = "PR_SURNAME";
+    OutlookProperties[OutlookProperties["PR_ORIGINAL_DISPLAY_NAME"] = 14867] = "PR_ORIGINAL_DISPLAY_NAME";
+    OutlookProperties[OutlookProperties["PR_POSTAL_ADDRESS"] = 14869] = "PR_POSTAL_ADDRESS";
+    OutlookProperties[OutlookProperties["PT_UNICODE"] = 14870] = "PT_UNICODE";
+    OutlookProperties[OutlookProperties["PR_TITLE"] = 14871] = "PR_TITLE";
+    OutlookProperties[OutlookProperties["PR_DEPARTMENT_NAME"] = 14872] = "PR_DEPARTMENT_NAME";
+    OutlookProperties[OutlookProperties["PR_OFFICE_LOCATION"] = 14873] = "PR_OFFICE_LOCATION";
+    OutlookProperties[OutlookProperties["PR_PRIMARY_TELEPHONE_NUMBER"] = 14874] = "PR_PRIMARY_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_BUSINESS2_TELEPHONE_NUMBER"] = 14875] = "PR_BUSINESS2_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_MOBILE_TELEPHONE_NUMBER"] = 14876] = "PR_MOBILE_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_RADIO_TELEPHONE_NUMBER"] = 14877] = "PR_RADIO_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_CAR_TELEPHONE_NUMBER"] = 14878] = "PR_CAR_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_OTHER_TELEPHONE_NUMBER"] = 14879] = "PR_OTHER_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_TRANSMITABLE_DISPLAY_NAME"] = 14880] = "PR_TRANSMITABLE_DISPLAY_NAME";
+    OutlookProperties[OutlookProperties["PR_PAGER_TELEPHONE_NUMBER"] = 14881] = "PR_PAGER_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_PRIMARY_FAX_NUMBER"] = 14883] = "PR_PRIMARY_FAX_NUMBER";
+    OutlookProperties[OutlookProperties["PR_BUSINESS_FAX_NUMBER"] = 14884] = "PR_BUSINESS_FAX_NUMBER";
+    OutlookProperties[OutlookProperties["PR_HOME_FAX_NUMBER"] = 14885] = "PR_HOME_FAX_NUMBER";
+    OutlookProperties[OutlookProperties["PR_COUNTRY"] = 14886] = "PR_COUNTRY";
+    OutlookProperties[OutlookProperties["PR_LOCALITY"] = 14887] = "PR_LOCALITY";
+    OutlookProperties[OutlookProperties["PR_STATE_OR_PROVINCE"] = 14888] = "PR_STATE_OR_PROVINCE";
+    OutlookProperties[OutlookProperties["PR_STREET_ADDRESS"] = 14889] = "PR_STREET_ADDRESS";
+    OutlookProperties[OutlookProperties["PR_POSTAL_CODE"] = 14890] = "PR_POSTAL_CODE";
+    OutlookProperties[OutlookProperties["PR_POST_OFFICE_BOX"] = 14891] = "PR_POST_OFFICE_BOX";
+    OutlookProperties[OutlookProperties["PR_TELEX_NUMBER"] = 14892] = "PR_TELEX_NUMBER";
+    OutlookProperties[OutlookProperties["PR_ISDN_NUMBER"] = 14893] = "PR_ISDN_NUMBER";
+    OutlookProperties[OutlookProperties["PR_ASSISTANT_TELEPHONE_NUMBER"] = 14894] = "PR_ASSISTANT_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_HOME2_TELEPHONE_NUMBER"] = 14895] = "PR_HOME2_TELEPHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_ASSISTANT"] = 14896] = "PR_ASSISTANT";
+    OutlookProperties[OutlookProperties["PR_HOBBIES"] = 14915] = "PR_HOBBIES";
+    OutlookProperties[OutlookProperties["PR_MIDDLE_NAME"] = 14916] = "PR_MIDDLE_NAME";
+    OutlookProperties[OutlookProperties["PR_DISPLAY_NAME_PREFIX"] = 14917] = "PR_DISPLAY_NAME_PREFIX";
+    OutlookProperties[OutlookProperties["PR_PROFESSION"] = 14918] = "PR_PROFESSION";
+    OutlookProperties[OutlookProperties["PR_REFERRED_BY_NAME"] = 14919] = "PR_REFERRED_BY_NAME";
+    OutlookProperties[OutlookProperties["PR_SPOUSE_NAME"] = 14920] = "PR_SPOUSE_NAME";
+    OutlookProperties[OutlookProperties["PR_COMPUTER_NETWORK_NAME"] = 14921] = "PR_COMPUTER_NETWORK_NAME";
+    OutlookProperties[OutlookProperties["PR_CUSTOMER_ID"] = 14922] = "PR_CUSTOMER_ID";
+    OutlookProperties[OutlookProperties["PR_TTYTDD_PHONE_NUMBER"] = 14923] = "PR_TTYTDD_PHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_FTP_SITE"] = 14924] = "PR_FTP_SITE";
+    OutlookProperties[OutlookProperties["PR_MANAGER_NAME"] = 14926] = "PR_MANAGER_NAME";
+    OutlookProperties[OutlookProperties["PR_NICKNAME"] = 14927] = "PR_NICKNAME";
+    OutlookProperties[OutlookProperties["PR_PERSONAL_HOME_PAGE"] = 14928] = "PR_PERSONAL_HOME_PAGE";
+    OutlookProperties[OutlookProperties["PR_BUSINESS_HOME_PAGE"] = 14929] = "PR_BUSINESS_HOME_PAGE";
+    OutlookProperties[OutlookProperties["PR_COMPANY_MAIN_PHONE_NUMBER"] = 14935] = "PR_COMPANY_MAIN_PHONE_NUMBER";
+    OutlookProperties[OutlookProperties["PR_CHILDRENS_NAMES"] = 14936] = "PR_CHILDRENS_NAMES";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_CITY"] = 14937] = "PR_HOME_ADDRESS_CITY";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_COUNTRY"] = 14938] = "PR_HOME_ADDRESS_COUNTRY";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_POSTAL_CODE"] = 14939] = "PR_HOME_ADDRESS_POSTAL_CODE";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_STATE_OR_PROVINCE"] = 14940] = "PR_HOME_ADDRESS_STATE_OR_PROVINCE";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_STREET"] = 14941] = "PR_HOME_ADDRESS_STREET";
+    OutlookProperties[OutlookProperties["PR_HOME_ADDRESS_POST_OFFICE_BOX"] = 14942] = "PR_HOME_ADDRESS_POST_OFFICE_BOX";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_CITY"] = 14943] = "PR_OTHER_ADDRESS_CITY";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_COUNTRY"] = 14944] = "PR_OTHER_ADDRESS_COUNTRY";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_POSTAL_CODE"] = 14945] = "PR_OTHER_ADDRESS_POSTAL_CODE";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_STATE_OR_PROVINCE"] = 14946] = "PR_OTHER_ADDRESS_STATE_OR_PROVINCE";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_STREET"] = 14947] = "PR_OTHER_ADDRESS_STREET";
+    OutlookProperties[OutlookProperties["PR_OTHER_ADDRESS_POST_OFFICE_BOX"] = 14948] = "PR_OTHER_ADDRESS_POST_OFFICE_BOX";
+    OutlookProperties[OutlookProperties["PR_FOLDER_TYPE"] = 13825] = "PR_FOLDER_TYPE";
+    OutlookProperties[OutlookProperties["PR_CONTENT_COUNT"] = 13826] = "PR_CONTENT_COUNT";
+    OutlookProperties[OutlookProperties["PR_CONTENT_UNREAD"] = 13827] = "PR_CONTENT_UNREAD";
+    OutlookProperties[OutlookProperties["PR_SUBFOLDERS"] = 13834] = "PR_SUBFOLDERS";
+    OutlookProperties[OutlookProperties["PR_CONTAINER_CLASS"] = 13843] = "PR_CONTAINER_CLASS";
+    OutlookProperties[OutlookProperties["PR_CONTAINER_FLAGS"] = 13824] = "PR_CONTAINER_FLAGS";
+    OutlookProperties[OutlookProperties["PR_DISPLAY_NAME"] = 12289] = "PR_DISPLAY_NAME";
+    OutlookProperties[OutlookProperties["PR_RECIPIENT_FLAGS"] = 24573] = "PR_RECIPIENT_FLAGS";
+    OutlookProperties[OutlookProperties["PR_SMTP_ADDRESS"] = 14846] = "PR_SMTP_ADDRESS";
+    OutlookProperties[OutlookProperties["PidTagRecipientOrder"] = 24543] = "PidTagRecipientOrder";
+    OutlookProperties[OutlookProperties["PidTagConversationId"] = 12307] = "PidTagConversationId";
+    OutlookProperties[OutlookProperties["PidTagConversationIndexTracking"] = 12310] = "PidTagConversationIndexTracking";
+    OutlookProperties[OutlookProperties["PidLidLogType"] = 34560] = "PidLidLogType";
+    OutlookProperties[OutlookProperties["PidLidTaskStartDate"] = 33028] = "PidLidTaskStartDate";
+    OutlookProperties[OutlookProperties["PidLidTaskDueDate"] = 33029] = "PidLidTaskDueDate";
+    OutlookProperties[OutlookProperties["PidLidReminderSet"] = 34051] = "PidLidReminderSet";
+    OutlookProperties[OutlookProperties["PidLidReminderDelta"] = 34049] = "PidLidReminderDelta";
+    OutlookProperties[OutlookProperties["PidLidLogStart"] = 34566] = "PidLidLogStart";
+    OutlookProperties[OutlookProperties["PidLidLogDuration"] = 34567] = "PidLidLogDuration";
+    OutlookProperties[OutlookProperties["PidLidLogEnd"] = 34568] = "PidLidLogEnd";
+    OutlookProperties[OutlookProperties["PidLidLogFlags"] = 34572] = "PidLidLogFlags";
+    OutlookProperties[OutlookProperties["PidLidLogDocumentPrinted"] = 34574] = "PidLidLogDocumentPrinted";
+    OutlookProperties[OutlookProperties["PidLidLogDocumentSaved"] = 34575] = "PidLidLogDocumentSaved";
+    OutlookProperties[OutlookProperties["PidLidLogDocumentRouted"] = 34576] = "PidLidLogDocumentRouted";
+    OutlookProperties[OutlookProperties["PidLidLogDocumentPosted"] = 34577] = "PidLidLogDocumentPosted";
+    OutlookProperties[OutlookProperties["PidLidLogTypeDesc"] = 34578] = "PidLidLogTypeDesc";
+    OutlookProperties[OutlookProperties["PidLidSendMeetingAsIcal"] = 33280] = "PidLidSendMeetingAsIcal";
+    OutlookProperties[OutlookProperties["PidLidBusyStatus"] = 33285] = "PidLidBusyStatus";
+    OutlookProperties[OutlookProperties["PidLidLocation"] = 33288] = "PidLidLocation";
+    OutlookProperties[OutlookProperties["PidLidAppointmentStartWhole"] = 33293] = "PidLidAppointmentStartWhole";
+    OutlookProperties[OutlookProperties["PidLidAppointmentEndWhole"] = 33294] = "PidLidAppointmentEndWhole";
+    OutlookProperties[OutlookProperties["PidLidAppointmentDuration"] = 33299] = "PidLidAppointmentDuration";
+    OutlookProperties[OutlookProperties["PidLidAppointmentColor"] = 33300] = "PidLidAppointmentColor";
+    OutlookProperties[OutlookProperties["PidLidAppointmentSubType"] = 33301] = "PidLidAppointmentSubType";
+    OutlookProperties[OutlookProperties["PidLidAppointmentStateFlags"] = 33303] = "PidLidAppointmentStateFlags";
+    OutlookProperties[OutlookProperties["PidLidResponseStatus"] = 33304] = "PidLidResponseStatus";
+    OutlookProperties[OutlookProperties["PidLidRecurring"] = 33315] = "PidLidRecurring";
+    OutlookProperties[OutlookProperties["PidLidExceptionReplaceTime"] = 33320] = "PidLidExceptionReplaceTime";
+    OutlookProperties[OutlookProperties["PidLidRecurrenceType"] = 33329] = "PidLidRecurrenceType";
+    OutlookProperties[OutlookProperties["PidLidRecurrencePattern"] = 33330] = "PidLidRecurrencePattern";
+    OutlookProperties[OutlookProperties["PidLidAppointmentRecur"] = 33302] = "PidLidAppointmentRecur";
+    OutlookProperties[OutlookProperties["PidLidTimeZoneStruct"] = 33331] = "PidLidTimeZoneStruct";
+    OutlookProperties[OutlookProperties["PidLidAllAttendeesString"] = 33336] = "PidLidAllAttendeesString";
+    OutlookProperties[OutlookProperties["PidLidToAttendeesString"] = 33339] = "PidLidToAttendeesString";
+    OutlookProperties[OutlookProperties["PidLidCcAttendeesString"] = 33340] = "PidLidCcAttendeesString";
+    OutlookProperties[OutlookProperties["PidLidAppointmentSequence"] = 33281] = "PidLidAppointmentSequence";
+    OutlookProperties[OutlookProperties["PidLidConferencingCheck"] = 33344] = "PidLidConferencingCheck";
+    OutlookProperties[OutlookProperties["PidLidConferencingType"] = 33345] = "PidLidConferencingType";
+    OutlookProperties[OutlookProperties["PidLidDirectory"] = 33346] = "PidLidDirectory";
+    OutlookProperties[OutlookProperties["PidLidOrganizerAlias"] = 33347] = "PidLidOrganizerAlias";
+    OutlookProperties[OutlookProperties["PidLidNetShowUrl"] = 33352] = "PidLidNetShowUrl";
+    OutlookProperties[OutlookProperties["PidLidCollaborateDoc"] = 33351] = "PidLidCollaborateDoc";
+    OutlookProperties[OutlookProperties["PidLidAttendeeCriticalChange"] = 1] = "PidLidAttendeeCriticalChange";
+    OutlookProperties[OutlookProperties["PidLidAppointmentCounterProposal"] = 33367] = "PidLidAppointmentCounterProposal";
+    OutlookProperties[OutlookProperties["PidLidIsSilent"] = 4] = "PidLidIsSilent";
+    OutlookProperties[OutlookProperties["PidLidRequiredAttendees"] = 6] = "PidLidRequiredAttendees";
+    OutlookProperties[OutlookProperties["PidTagMessageLocaleId"] = 16369] = "PidTagMessageLocaleId";
+    OutlookProperties[OutlookProperties["PidLidFileUnder"] = 32773] = "PidLidFileUnder";
+    OutlookProperties[OutlookProperties["PidLidHomeAddress"] = 32794] = "PidLidHomeAddress";
+    OutlookProperties[OutlookProperties["PidLidWorkAddress"] = 32795] = "PidLidWorkAddress";
+    OutlookProperties[OutlookProperties["PidLidOtherAddress"] = 32796] = "PidLidOtherAddress";
+    OutlookProperties[OutlookProperties["PidLidPostalAddressId"] = 32802] = "PidLidPostalAddressId";
+    OutlookProperties[OutlookProperties["PidLidHtml"] = 32811] = "PidLidHtml";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressStreet"] = 32837] = "PidLidWorkAddressStreet";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressCity"] = 32838] = "PidLidWorkAddressCity";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressState"] = 32839] = "PidLidWorkAddressState";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressPostalCode"] = 32840] = "PidLidWorkAddressPostalCode";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressCountry"] = 32841] = "PidLidWorkAddressCountry";
+    OutlookProperties[OutlookProperties["PidLidWorkAddressPostOfficeBox"] = 32842] = "PidLidWorkAddressPostOfficeBox";
+    OutlookProperties[OutlookProperties["PidLidInstantMessagingAddress"] = 32866] = "PidLidInstantMessagingAddress";
+    OutlookProperties[OutlookProperties["PidLidEmail1DisplayName"] = 32896] = "PidLidEmail1DisplayName";
+    OutlookProperties[OutlookProperties["PidLidEmail1AddressType"] = 32898] = "PidLidEmail1AddressType";
+    OutlookProperties[OutlookProperties["PidLidEmail1EmailAddress"] = 32899] = "PidLidEmail1EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidEmail1OriginalDisplayName"] = 32900] = "PidLidEmail1OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidEmail2DisplayName"] = 32912] = "PidLidEmail2DisplayName";
+    OutlookProperties[OutlookProperties["PidLidEmail2AddressType"] = 32914] = "PidLidEmail2AddressType";
+    OutlookProperties[OutlookProperties["PidLidEmail2EmailAddress"] = 32915] = "PidLidEmail2EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidEmail2OriginalDisplayName"] = 32916] = "PidLidEmail2OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidEmail3DisplayName"] = 32928] = "PidLidEmail3DisplayName";
+    OutlookProperties[OutlookProperties["PidLidEmail3AddressType"] = 32930] = "PidLidEmail3AddressType";
+    OutlookProperties[OutlookProperties["PidLidEmail3EmailAddress"] = 32931] = "PidLidEmail3EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidEmail3OriginalDisplayName"] = 32932] = "PidLidEmail3OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidFax1AddressType"] = 32946] = "PidLidFax1AddressType";
+    OutlookProperties[OutlookProperties["PidLidFax1EmailAddress"] = 32947] = "PidLidFax1EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidFax1OriginalDisplayName"] = 32948] = "PidLidFax1OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidFax2AddressType"] = 32962] = "PidLidFax2AddressType";
+    OutlookProperties[OutlookProperties["PidLidFax2EmailAddress"] = 32963] = "PidLidFax2EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidFax2OriginalDisplayName"] = 32964] = "PidLidFax2OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidFax3AddressType"] = 32978] = "PidLidFax3AddressType";
+    OutlookProperties[OutlookProperties["PidLidFax3EmailAddress"] = 32979] = "PidLidFax3EmailAddress";
+    OutlookProperties[OutlookProperties["PidLidFax3OriginalDisplayName"] = 32980] = "PidLidFax3OriginalDisplayName";
+    OutlookProperties[OutlookProperties["PidLidFreeBusyLocation"] = 32984] = "PidLidFreeBusyLocation";
+    OutlookProperties[OutlookProperties["PidTagBirthday"] = 14914] = "PidTagBirthday";
+    OutlookProperties[OutlookProperties["PidTagWeddingAnniversary"] = 14913] = "PidTagWeddingAnniversary";
+    OutlookProperties[OutlookProperties["PidLidPercentComplete"] = 33026] = "PidLidPercentComplete";
+    OutlookProperties[OutlookProperties["PidLidTaskStatus"] = 33025] = "PidLidTaskStatus";
+    OutlookProperties[OutlookProperties["PidLidTaskDeadOccurrence"] = 33033] = "PidLidTaskDeadOccurrence";
+    OutlookProperties[OutlookProperties["PidLidTaskDateCompleted"] = 33039] = "PidLidTaskDateCompleted";
+    OutlookProperties[OutlookProperties["PidLidTaskActualEffort"] = 33040] = "PidLidTaskActualEffort";
+    OutlookProperties[OutlookProperties["PidLidTaskEstimatedEffort"] = 33041] = "PidLidTaskEstimatedEffort";
+    OutlookProperties[OutlookProperties["PidLidTaskVersion"] = 33042] = "PidLidTaskVersion";
+    OutlookProperties[OutlookProperties["PidLidTaskRecurrence"] = 33046] = "PidLidTaskRecurrence";
+    OutlookProperties[OutlookProperties["PidLidTaskComplete"] = 33052] = "PidLidTaskComplete";
+    OutlookProperties[OutlookProperties["PidLidTaskOwner"] = 33055] = "PidLidTaskOwner";
+    OutlookProperties[OutlookProperties["PidLidTaskAssigner"] = 33057] = "PidLidTaskAssigner";
+    OutlookProperties[OutlookProperties["PidLidTaskLastUser"] = 33058] = "PidLidTaskLastUser";
+    OutlookProperties[OutlookProperties["PidLidTaskOrdinal"] = 33059] = "PidLidTaskOrdinal";
+    OutlookProperties[OutlookProperties["PidLidTaskFRecurring"] = 33062] = "PidLidTaskFRecurring";
+    OutlookProperties[OutlookProperties["PidLidTaskOwnership"] = 33065] = "PidLidTaskOwnership";
+    OutlookProperties[OutlookProperties["PidLidTaskAcceptanceState"] = 33066] = "PidLidTaskAcceptanceState";
+    OutlookProperties[OutlookProperties["PidLidYomiLastName"] = 32813] = "PidLidYomiLastName";
+    OutlookProperties[OutlookProperties["PidLidYomiFirstName"] = 32812] = "PidLidYomiFirstName";
+    OutlookProperties[OutlookProperties["PidLidYomiCompanyName"] = 32814] = "PidLidYomiCompanyName";
+})(OutlookProperties = exports.OutlookProperties || (exports.OutlookProperties = {}));
+
+
+/***/ }),
+
+/***/ 4087:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+/**
+ * PST adapter utilities
+ */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createPropertyFinder = exports.processNameToIDMap = void 0;
+const msftUuidStringify_1 = __webpack_require__(5965);
+const NodeMap_class_1 = __webpack_require__(9774);
+const PHUtil_1 = __webpack_require__(702);
+const PropertyContextUtil_1 = __webpack_require__(1662);
+const PSTUtil_class_1 = __webpack_require__(6621);
+const guidMap = new Map([
+    ['00020329-0000-0000-C000-000000000046', 0],
+    ['00062008-0000-0000-C000-000000000046', 1],
+    ['00062004-0000-0000-C000-000000000046', 2],
+    ['00020386-0000-0000-C000-000000000046', 3],
+    ['00062002-0000-0000-C000-000000000046', 4],
+    ['6ED8DA90-450B-101B-98DA-00AA003F1305', 5],
+    ['0006200A-0000-0000-C000-000000000046', 6],
+    ['41F28F13-83F4-4114-A584-EEDB5A6B0BFF', 7],
+    ['0006200E-0000-0000-C000-000000000046', 8],
+    ['00062041-0000-0000-C000-000000000046', 9],
+    ['00062003-0000-0000-C000-000000000046', 10],
+    ['4442858E-A9E3-4E80-B900-317A210CC15B', 11],
+    ['00020328-0000-0000-C000-000000000046', 12],
+    ['71035549-0739-4DCB-9163-00F0580DBBDF', 13],
+    ['00062040-0000-0000-C000-000000000046', 14],
+]);
+/**
+ * Process name to ID map.
+ *
+ * @param nameToIdMapDescriptorNode nodeId 97
+ */
+function processNameToIDMap(nameToIdMapDescriptorNode, resolver) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const subNode = nameToIdMapDescriptorNode.getSubNode();
+        const bcTable = (yield (yield (0, PropertyContextUtil_1.getPropertyContext)(yield (0, PHUtil_1.getHeapFrom)(subNode), resolver))
+            .list());
+        function getTableItem(key) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const found = bcTable.find(it => it.key === key);
+                if (found === undefined) {
+                    throw new Error(`processNameToIDMap key:${key} is null`);
+                }
+                const { value } = found;
+                if (value instanceof ArrayBuffer) {
+                    return value;
+                }
+                return undefined;
+            });
+        }
+        // process the map
+        // Get the guids
+        const guidEntry = yield getTableItem(2);
+        if (!guidEntry) {
+            throw new Error('PSTFile::processNameToIDMap guidEntry is null');
+        }
+        const guids = new Uint8Array(guidEntry);
+        const nGuids = Math.trunc(guids.byteLength / 16);
+        const guidIndexes = [];
+        let offset = 0;
+        for (let i = 0; i < nGuids; ++i) {
+            const strUID = (0, msftUuidStringify_1.msftUuidStringify)(guids, offset).toUpperCase();
+            const guid = guidMap.get(strUID);
+            if (guid) {
+                guidIndexes[i] = guid;
+            }
+            else {
+                guidIndexes[i] = -1; // We don't know this guid
+            }
+            // console.log('PSTFile:: processNameToIdMap idx: ' + i + ', ' + strUID + ', ' + guidIndexes[i]);
+            offset += 16;
+        }
+        // if we have a reference to an internal descriptor
+        const mapEntries = yield getTableItem(3);
+        if (!mapEntries) {
+            throw new Error('PSTFile::processNameToIDMap mapEntries is null');
+        }
+        const nameToIdByte = new Uint8Array(mapEntries);
+        const nameToIdByteView = new DataView(mapEntries);
+        const stringMapEntries = yield getTableItem(4);
+        if (!stringMapEntries) {
+            throw new Error('PSTFile::processNameToIDMap stringMapEntries is null');
+        }
+        const stringNameToIdByte = new Uint8Array(stringMapEntries);
+        const stringNameToIdByteView = new DataView(stringMapEntries);
+        const stringNameToIdByteBuffer = Buffer.from(stringMapEntries);
+        const nodeMap = new NodeMap_class_1.NodeMap();
+        // process the entries
+        for (let x = 0; x + 8 < nameToIdByte.length; x += 8) {
+            const key = nameToIdByteView.getUint32(x, true);
+            let guid = nameToIdByteView.getUint16(x + 4, true);
+            let propId = nameToIdByteView.getUint16(x + 6, true);
+            if (key == 0x55555555) {
+                break;
+            }
+            const PS_PUBLIC_STRINGS = 0;
+            const PS_MAPI = 12;
+            if ((guid & 0x0001) == 0) {
+                // identifier is numeric
+                propId += 0x8000;
+                guid >>= 1;
+                let guidIndex;
+                if (guid == 1) {
+                    guidIndex = PS_MAPI;
+                }
+                else if (guid == 2) {
+                    guidIndex = PS_PUBLIC_STRINGS;
+                }
+                else {
+                    guidIndex = guidIndexes[guid - 3];
+                }
+                nodeMap.setId(key, propId, guidIndex);
+            }
+            else {
+                // identifier is a string
+                // key is byte offset into the String stream in which the string name of the property is stored.
+                const len = stringNameToIdByteView.getUint32(key, true);
+                const keyByteValue = Buffer.alloc(len);
+                PSTUtil_class_1.PSTUtil.arraycopy(stringNameToIdByteBuffer, key + 4, keyByteValue, 0, keyByteValue.length);
+                propId += 0x8000;
+                nodeMap.setId(keyByteValue.toString('utf16le').replace(/\0/g, ''), propId);
+            }
+        }
+        return nodeMap;
+    });
+}
+exports.processNameToIDMap = processNameToIDMap;
+function createPropertyFinder(props) {
+    return {
+        findByKey(key) {
+            return props.find(it => it.key === key);
+        },
+    };
+}
+exports.createPropertyFinder = createPropertyFinder;
+
+
+/***/ }),
+
+/***/ 702:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+/**
+ * PST higher level utilities
+ */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getHeapFrom = void 0;
+function getHeapFrom(node) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const data_array = yield node.getData();
+        const data_chunks = new Map();
+        let bClientSig = 0;
+        let userRootHnid = 0;
+        for (let x = 0; x < data_array.length; x++) {
+            if (x === 0) {
+                ({ bClientSig, userRoot: userRootHnid } = load_root_header(data_chunks, data_array[x]));
+            }
+            else {
+                load_page_header(data_chunks, data_array[x], x, node.is4K);
+            }
+        }
+        return {
+            bClientSig,
+            userRootHnid,
+            toString() {
+                return `${node}`;
+            },
+            getReader() {
+                return {
+                    getHeapBuffers(hnid) {
+                        return __awaiter(this, void 0, void 0, function* () {
+                            if (hnid === 0) {
+                                return [];
+                            }
+                            else if (hnid & 0x1f) {
+                                // this is NID (node)
+                                const childNode = yield node.getChildBy(hnid);
+                                if (childNode === undefined) {
+                                    throw new Error(`childNode=0x${hnid.toString(16)} of ${node} not found`);
+                                }
+                                const data_array = yield childNode.getData();
+                                return data_array;
+                            }
+                            else {
+                                // this is HID (heap)
+                                const data = data_chunks.get(hnid);
+                                if (data === undefined) {
+                                    throw new Error(`heap=0x${hnid.toString(16)} of ${node} not found`);
+                                }
+                                return [data];
+                            }
+                        });
+                    },
+                    toString() {
+                        return `reader of ${node}`;
+                    },
+                };
+            },
+        };
+    });
+}
+exports.getHeapFrom = getHeapFrom;
+/**
+ * Parse HNHDR
+ *
+ * @see https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-pst/8e4ae05c-3c24-4103-b7e5-ffef6f244834
+ */
+function load_root_header(data_chunks, data) {
+    const view = new DataView(data);
+    const page_map = view.getUint16(0, true);
+    const sig = view.getUint8(2);
+    const bClientSig = view.getUint8(3);
+    const userRoot = view.getUint32(4, true);
+    if (sig !== 0xec) {
+        throw new Error("invalid HNHDR signature found");
+    }
+    // read HNPAGEMAP
+    const offsets_count = view.getUint16(page_map, true) + 1;
+    for (let x = 0; x < offsets_count - 1; x++) {
+        const from = view.getUint16(page_map + 4 + 2 * (x), true);
+        const to = view.getUint16(page_map + 4 + 2 * (x + 1), true);
+        data_chunks.set(0x20 * (1 + x), data.slice(from, to));
+    }
+    return { bClientSig, userRoot };
+}
+function load_page_header(data_chunks, data, page_index, is4K) {
+    const view = new DataView(data);
+    const page_map = view.getUint16(0, true);
+    const offsets_count = view.getUint16(page_map, true) + 1;
+    for (let x = 0; x < offsets_count - 1; x++) {
+        const from = view.getUint16(page_map + 4 + 2 * (x), true);
+        const to = view.getUint16(page_map + 4 + 2 * (x + 1), true);
+        data_chunks.set(0x20 * (1 + x) + (is4K ? 65536 * 8 : 65536) * page_index, data.slice(from, to));
+    }
+}
+
+
+/***/ }),
+
+/***/ 9009:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/**
+ * PST lower level misc utilities
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.splitPer = void 0;
+/**
+ *
+ * @internal
+ */
+function* splitPer(array, per) {
+    for (let offset = 0; offset < array.byteLength; offset += per) {
+        yield array.slice(offset, offset + per);
+    }
+}
+exports.splitPer = splitPer;
+
+
+/***/ }),
+
+/***/ 5408:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/**
+ * PST lower level utilities
+ */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.openLowPst = exports.readLong = exports.readNumber64 = void 0;
+const long_1 = __importDefault(__webpack_require__(1583));
+const PSTUtil_class_1 = __webpack_require__(6621);
+const pako_1 = __webpack_require__(9591);
+function surelyReader(readFile) {
+    return (buffer, offset, length, position) => __awaiter(this, void 0, void 0, function* () {
+        const bytesRead = yield readFile(buffer, offset, length, position);
+        if (bytesRead !== length) {
+            throw new Error(`file reader must provide buffer ${length} bytes from position ${position}, while we got ${bytesRead} bytes`);
+        }
+        return length;
+    });
+}
+/**
+ * @internal
+ */
+function readNumber64(view, offset) {
+    return new long_1.default(view.getUint32(offset, true), view.getUint32(offset + 4, true), true)
+        .toNumber();
+}
+exports.readNumber64 = readNumber64;
+/**
+ * @internal
+ */
+function readLong(view, offset) {
+    return new long_1.default(view.getUint32(offset, true), view.getUint32(offset + 4, true), true);
+}
+exports.readLong = readLong;
+/**
+ *
+ * @internal
+ */
+function passThru1(data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return data;
+    });
+}
+/**
+ *
+ * @internal
+ */
+function willUnzip1(data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (data.byteLength >= 4) {
+            const view = new DataView(data);
+            if (view.getUint16(0, true) === 0x9c78) {
+                const inflated = (0, pako_1.inflate)(data);
+                return inflated.buffer;
+            }
+        }
+        return data;
+    });
+}
+var ptr32;
+(function (ptr32) {
+    function readBlockPtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 12 * x;
+            const blockId = view.getUint32(top + 0, true);
+            array.push({
+                blockId,
+                offset: new long_1.default(view.getUint32(top + 4, true)),
+                size: view.getUint16(top + 8, true),
+                isData: (blockId & 2) === 0,
+            });
+        }
+        return array;
+    }
+    ptr32.readBlockPtr = readBlockPtr;
+    function readTablePtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 12 * x;
+            array.push({
+                start: new long_1.default(view.getUint32(top + 0, true)),
+                u1: new long_1.default(view.getUint32(top + 4, true)),
+                offset: new long_1.default(view.getUint32(top + 8, true)),
+            });
+        }
+        return array;
+    }
+    ptr32.readTablePtr = readTablePtr;
+    function readNodePtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 16 * x;
+            array.push({
+                nodeId: view.getUint32(top + 0, true),
+                blockId: view.getUint32(top + 4, true),
+                subBlockId: view.getUint32(top + 8, true),
+                parentNodeId: view.getUint32(top + 12, true),
+            });
+        }
+        return array;
+    }
+    ptr32.readNodePtr = readNodePtr;
+    function readSLBlock(view, offset) {
+        const count = view.getUint16(offset + 2, true);
+        const entries = [];
+        for (let x = 0; x < count; x++) {
+            const top = offset + 4 + 12 * x;
+            entries.push({
+                nodeId: view.getUint32(top + 0, true),
+                blockId: view.getUint32(top + 4, true),
+                subBlockId: view.getUint32(top + 8, true),
+            });
+        }
+        return {
+            entries
+        };
+    }
+    ptr32.readSLBlock = readSLBlock;
+    function readXBlock(view, offset, itemCount) {
+        const entries = [];
+        for (let x = 0; x < itemCount; x++) {
+            const top = offset + 8 + 4 * x;
+            entries.push({
+                blockId: view.getUint32(top + 0, true),
+            });
+        }
+        return entries;
+    }
+    ptr32.readXBlock = readXBlock;
+    function readXXBlock(view, offset, itemCount) {
+        const entries = [];
+        for (let x = 0; x < itemCount; x++) {
+            const top = offset + 8 + 4 * x;
+            entries.push({
+                blockId: view.getUint32(top + 0, true),
+            });
+        }
+        return entries;
+    }
+    ptr32.readXXBlock = readXXBlock;
+    function readSIBlock(view, offset) {
+        const count = view.getUint16(offset + 2, true);
+        const entries = [];
+        for (let x = 0; x < count; x++) {
+            const top = offset + 4 + 12 * x;
+            entries.push({
+                nodeId: view.getUint32(top + 0, true),
+                blockId: view.getUint32(top + 4, true),
+            });
+        }
+        return {
+            entries
+        };
+    }
+    ptr32.readSIBlock = readSIBlock;
+})(ptr32 || (ptr32 = {}));
+var ptr64;
+(function (ptr64) {
+    function readBlockPtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 24 * x;
+            const blockId = readNumber64(view, top + 0);
+            array.push({
+                blockId,
+                offset: readLong(view, top + 8),
+                size: view.getUint16(top + 16, true),
+                isData: (blockId & 2) === 0,
+            });
+        }
+        return array;
+    }
+    ptr64.readBlockPtr = readBlockPtr;
+    function readTablePtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 24 * x;
+            array.push({
+                start: readLong(view, top + 0),
+                u1: readLong(view, top + 8),
+                offset: readLong(view, top + 16),
+            });
+        }
+        return array;
+    }
+    ptr64.readTablePtr = readTablePtr;
+    function readNodePtr(view, offset, footer) {
+        const array = [];
+        for (let x = 0; x < footer.itemCount; x++) {
+            const top = offset + 32 * x;
+            array.push({
+                nodeId: readNumber64(view, top + 0),
+                blockId: readNumber64(view, top + 8),
+                subBlockId: readNumber64(view, top + 16),
+                parentNodeId: view.getUint32(top + 24, true),
+            });
+        }
+        return array;
+    }
+    ptr64.readNodePtr = readNodePtr;
+    function readSLBlock(view, offset) {
+        const count = view.getUint16(offset + 2, true);
+        const entries = [];
+        for (let x = 0; x < count; x++) {
+            const top = offset + 8 + 24 * x;
+            entries.push({
+                nodeId: view.getUint32(top + 0, true),
+                blockId: readNumber64(view, top + 8),
+                subBlockId: readNumber64(view, top + 16),
+            });
+        }
+        return {
+            entries
+        };
+    }
+    ptr64.readSLBlock = readSLBlock;
+    function readXBlock(view, offset, itemCount) {
+        const entries = [];
+        for (let x = 0; x < itemCount; x++) {
+            const top = offset + 8 + 8 * x;
+            entries.push({
+                blockId: readNumber64(view, top + 0),
+            });
+        }
+        return entries;
+    }
+    ptr64.readXBlock = readXBlock;
+    function readXXBlock(view, offset, itemCount) {
+        const entries = [];
+        for (let x = 0; x < itemCount; x++) {
+            const top = offset + 8 + 8 * x;
+            entries.push({
+                blockId: readNumber64(view, top + 0),
+            });
+        }
+        return entries;
+    }
+    ptr64.readXXBlock = readXXBlock;
+    function readSIBlock(view, offset) {
+        const count = view.getUint16(offset + 2, true);
+        const entries = [];
+        for (let x = 0; x < count; x++) {
+            const top = offset + 8 + 24 * x;
+            entries.push({
+                nodeId: view.getUint32(top + 0, true),
+                blockId: readNumber64(view, top + 8),
+            });
+        }
+        return {
+            entries
+        };
+    }
+    ptr64.readSIBlock = readSIBlock;
+})(ptr64 || (ptr64 = {}));
+const ver0x0e = {
+    BACKLINK_OFFSET: 0x1f8,
+    LEVEL_INDICATOR_OFFSET: 0x1f3,
+    ITEM_COUNT_OFFSET: 0x1f0,
+    ENC_OFFSET: 0x1cd,
+    SECOND_POINTER_COUNT: 0xB8,
+    SECOND_POINTER: 0xBC,
+    INDEX_POINTER_COUNT: 0xC0,
+    INDEX_POINTER: 0xC4,
+    BlockSize: 512,
+    readId: (view, offset) => new long_1.default(view.getUint32(offset, true)),
+    readBlockPtr: ptr32.readBlockPtr,
+    readTablePtr: ptr32.readTablePtr,
+    readNodePtr: ptr32.readNodePtr,
+    readSLBlock: ptr32.readSLBlock,
+    readSIBlock: ptr32.readSIBlock,
+    readXBlock: ptr32.readXBlock,
+    readXXBlock: ptr32.readXXBlock,
+    unzipHook: passThru1,
+    is4K: false,
+};
+const ver0x17 = {
+    BACKLINK_OFFSET: 0x1f8,
+    LEVEL_INDICATOR_OFFSET: 0x1eb,
+    ITEM_COUNT_OFFSET: 0x1e8,
+    ENC_OFFSET: 0x201,
+    SECOND_POINTER_COUNT: 0xD8,
+    SECOND_POINTER: 0xE0,
+    INDEX_POINTER_COUNT: 0xE8,
+    INDEX_POINTER: 0xF0,
+    BlockSize: 512,
+    readId: readLong,
+    readBlockPtr: ptr64.readBlockPtr,
+    readTablePtr: ptr64.readTablePtr,
+    readNodePtr: ptr64.readNodePtr,
+    readSLBlock: ptr64.readSLBlock,
+    readSIBlock: ptr64.readSIBlock,
+    readXBlock: ptr64.readXBlock,
+    readXXBlock: ptr64.readXXBlock,
+    unzipHook: passThru1,
+    is4K: false,
+};
+const ver0x24 = {
+    BACKLINK_OFFSET: 0xff0,
+    LEVEL_INDICATOR_OFFSET: 0xfdd,
+    ITEM_COUNT_OFFSET: 0xfd8,
+    ENC_OFFSET: 0x201,
+    SECOND_POINTER_COUNT: 0xD8,
+    SECOND_POINTER: 0xE0,
+    INDEX_POINTER_COUNT: 0xE8,
+    INDEX_POINTER: 0xF0,
+    BlockSize: 4096,
+    readId: readLong,
+    readBlockPtr: ptr64.readBlockPtr,
+    readTablePtr: ptr64.readTablePtr,
+    readNodePtr: ptr64.readNodePtr,
+    readSLBlock: ptr64.readSLBlock,
+    readSIBlock: ptr64.readSIBlock,
+    readXBlock: ptr64.readXBlock,
+    readXXBlock: ptr64.readXXBlock,
+    unzipHook: willUnzip1,
+    is4K: true,
+};
+function openLowPst(api) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const surelyRead = surelyReader(api.readFile);
+        const buffer = new ArrayBuffer(1024);
+        const view = new DataView(buffer, 0, 1024);
+        yield surelyRead(buffer, 0, 1024, 0);
+        const key = '!BDN';
+        if ( false
+            || view.getUint8(0) !== key.charCodeAt(0)
+            || view.getUint8(1) !== key.charCodeAt(1)
+            || view.getUint8(2) !== key.charCodeAt(2)
+            || view.getUint8(3) !== key.charCodeAt(3)) {
+            throw new Error('PSTFile::open Invalid file header (expected: "!BDN"): ' + buffer.slice(0, 4));
+        }
+        const version = view.getUint8(10);
+        let trait;
+        if (false) {}
+        else if (version === 0x0e) {
+            trait = ver0x0e;
+        }
+        else if (version === 0x17) {
+            trait = ver0x17;
+        }
+        else if (version === 0x24) {
+            trait = ver0x24;
+        }
+        else {
+            throw new Error('PSTFile::open Unrecognised PST File version: ' + version);
+        }
+        const encryptionType = view.getUint8(trait.ENC_OFFSET);
+        if (encryptionType === 0x02) {
+            throw new Error('PSTFile::open PST is encrypted');
+        }
+        const unzipHook = trait.unzipHook;
+        function pst_read_block_size(position, size, decrypt) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const buffer = new ArrayBuffer(size);
+                yield surelyRead(buffer, 0, size, position.toNumber());
+                if (decrypt) {
+                    if (false) {}
+                    else if (encryptionType === 0) {
+                        // plain
+                    }
+                    else if (encryptionType === 1) {
+                        PSTUtil_class_1.PSTUtil.decodeArray(new Uint8Array(buffer, 0, size));
+                    }
+                    else {
+                        throw new Error(`Unknown encryptionType ${encryptionType}`);
+                    }
+                }
+                return yield unzipHook(buffer);
+            });
+        }
+        function readBlock(block, decrypt) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return yield unzipHook(yield pst_read_block_size(block.offset, block.size, block.isData && decrypt));
+            });
+        }
+        const blockMap = new Map;
+        const nodeMap = new Map;
+        function loadBlockTree(offset, linku1, start_val) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const buf = yield pst_read_block_size(offset, trait.BlockSize, false);
+                const view = new DataView(buf);
+                const footer = {
+                    itemCount: view.getUint8(trait.ITEM_COUNT_OFFSET),
+                    level: view.getUint8(trait.LEVEL_INDICATOR_OFFSET),
+                    thisId: trait.readId(view, trait.BACKLINK_OFFSET),
+                };
+                if (footer.thisId.neq(linku1)) {
+                    throw new Error(`block buffer seems to be broken. footer id is ${footer.thisId.toNumber()}, while ${linku1.toNumber()} is expected`);
+                }
+                if (footer.level === 0) {
+                    const array = trait.readBlockPtr(view, 0, footer);
+                    for (let x = 0; x < footer.itemCount; x++) {
+                        if (x === 0 && start_val.neq(0) && start_val.neq(array[x].blockId)) {
+                            throw new Error(`block buffer seems to be broken. first blockId is ${array[x].blockId}, while ${start_val.toNumber()} is expected`);
+                        }
+                        if (array[x].blockId === 0) {
+                            throw new Error(`blockId must not be 0`);
+                        }
+                        blockMap.set(array[x].blockId & ~1, array[x]);
+                    }
+                }
+                else {
+                    const array = trait.readTablePtr(view, 0, footer);
+                    for (let x = 0; x < footer.itemCount; x++) {
+                        if (x === 0 && start_val.neq(0) && start_val.neq(array[x].start)) {
+                            throw new Error(`block buffer seems to be broken. first table id is ${array[x].start.toNumber()}, while ${start_val.toNumber()} is expected`);
+                        }
+                        if (array[x].start.eq(0)) {
+                            throw new Error(`table id must not be 0`);
+                        }
+                        yield loadBlockTree(array[x].offset, array[x].u1, array[x].start);
+                    }
+                }
+            });
+        }
+        const block_btree_count = trait.readId(view, trait.INDEX_POINTER_COUNT);
+        const block_btree = trait.readId(view, trait.INDEX_POINTER);
+        yield loadBlockTree(block_btree, block_btree_count, long_1.default.ZERO);
+        function loadNodeTree(offset, linku1, start_val, prevLevel) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const buf = yield pst_read_block_size(offset, trait.BlockSize, false);
+                const view = new DataView(buf);
+                const footer = {
+                    itemCount: view.getUint8(trait.ITEM_COUNT_OFFSET),
+                    level: view.getUint8(trait.LEVEL_INDICATOR_OFFSET),
+                    thisId: trait.readId(view, trait.BACKLINK_OFFSET),
+                };
+                if (prevLevel !== Infinity) {
+                    if (footer.level !== prevLevel - 1) {
+                        throw new Error(`node level descending mismatched`);
+                    }
+                }
+                if (footer.thisId.neq(linku1)) {
+                    throw new Error(`node buffer seems to be broken. footer id is ${footer.thisId.toNumber()}, while ${linku1.toNumber()} is expected`);
+                }
+                if (footer.level === 0) {
+                    const array = trait.readNodePtr(view, 0, footer);
+                    for (let x = 0; x < footer.itemCount; x++) {
+                        if (x === 0 && start_val !== (0) && start_val !== (array[x].nodeId)) {
+                            throw new Error(`node buffer seems to be broken. first nodeId is ${array[x].nodeId}, while ${start_val} is expected`);
+                        }
+                        if (array[x].nodeId === 0) {
+                            break;
+                        }
+                        nodeMap.set(array[x].nodeId, array[x]);
+                    }
+                }
+                else {
+                    const array = trait.readTablePtr(view, 0, footer);
+                    for (let x = 0; x < footer.itemCount; x++) {
+                        if (x === 0 && start_val !== (0) && array[x].start.neq(start_val)) {
+                            throw new Error(`node buffer seems to be broken. table id is ${array[x].start.toNumber()}, while ${start_val} is expected`);
+                        }
+                        if (array[x].start.isZero()) {
+                            throw new Error(`table id must not be 0`);
+                        }
+                        yield loadNodeTree(array[x].offset, array[x].u1, array[x].start.toNumber(), footer.level);
+                    }
+                }
+            });
+        }
+        const node_btree_count = trait.readId(view, trait.SECOND_POINTER_COUNT);
+        const node_btree = trait.readId(view, trait.SECOND_POINTER);
+        yield loadNodeTree(node_btree, node_btree_count, 0x21, Infinity);
+        function loadMainBlockTo(blockId, consumer) {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (blockId === 0) {
+                    return;
+                }
+                const block = blockMap.get(blockId & ~1);
+                if (block === undefined) {
+                    throw new Error(`blockId=${blockId} not found`);
+                }
+                if (block.isData) {
+                    yield consumer(block);
+                }
+                else {
+                    const buf = yield readBlock(block, true);
+                    const view = new DataView(buf);
+                    const bType = view.getUint8(0);
+                    if (bType !== 1) {
+                        throw new Error("btype != 1");
+                    }
+                    const level = view.getUint8(1);
+                    const itemCount = view.getUint16(2, true);
+                    if (false) {}
+                    else if (level === 1) {
+                        //XBLOCK
+                        const entries = trait.readXBlock(view, 0, itemCount);
+                        for (let x = 0; x < entries.length; x++) {
+                            yield loadMainBlockTo(entries[x].blockId, consumer);
+                        }
+                    }
+                    else if (level === 2) {
+                        //XXBLOCK
+                        const entries = trait.readXXBlock(view, 0, itemCount);
+                        for (let x = 0; x < entries.length; x++) {
+                            yield loadMainBlockTo(entries[x].blockId, consumer);
+                        }
+                    }
+                    else {
+                        throw new Error(`invalid level ${level}`);
+                    }
+                }
+            });
+        }
+        function readSubNode(blockId, subNodeMap) {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (blockId === 0) {
+                    return;
+                }
+                const block = blockMap.get(blockId);
+                if (block === undefined) {
+                    throw new Error(`blockId ${blockId} not found`);
+                }
+                const buf = yield readBlock(block, true);
+                const view = new DataView(buf);
+                if (view.getUint8(0) !== 2) {
+                    throw new Error("btype != 2");
+                }
+                const level = view.getUint8(1);
+                if (level === 0) {
+                    //SLBLOCK
+                    const { entries } = trait.readSLBlock(view, 0);
+                    for (let index = 0; index < entries.length; index++) {
+                        subNodeMap.set(entries[index].nodeId, {
+                            dataBlockId: entries[index].blockId,
+                            subBlockId: entries[index].subBlockId,
+                        });
+                    }
+                }
+                else {
+                    //SIBLOCK
+                    const struc = trait.readSIBlock(view, 0);
+                    const { entries } = struc;
+                    for (let index = 0; index < entries.length; index++) {
+                        yield readSubNode(entries[index].blockId, subNodeMap);
+                    }
+                }
+            });
+        }
+        //const nodeMap = processNameToIDMap();
+        function getOneNodeBy(nodeId) {
+            if (nodeId === 0) {
+                return undefined;
+            }
+            const ptr = nodeMap.get(nodeId);
+            if (ptr === undefined) {
+                return undefined;
+            }
+            const { blockId } = ptr;
+            function getData() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const array = [];
+                    yield loadMainBlockTo(blockId, (block) => __awaiter(this, void 0, void 0, function* () {
+                        const buf = yield readBlock(block, true);
+                        array.push(buf);
+                    }));
+                    if (array.length === 0) {
+                        return new ArrayBuffer(0);
+                    }
+                    else {
+                        return array[0];
+                    }
+                });
+            }
+            function getDataOf(blockId) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const array = [];
+                    yield loadMainBlockTo(blockId, (block) => __awaiter(this, void 0, void 0, function* () {
+                        array.push(yield readBlock(block, true));
+                    }));
+                    return array;
+                });
+            }
+            function getChildOf(blockId, childNodeId, parentToString) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    if (blockId === 0) {
+                        return undefined;
+                    }
+                    const block = blockMap.get(blockId & ~1);
+                    if (block === undefined) {
+                        throw new Error(`blockId=${blockId}`
+                            + ` for childNodeId=0x${childNodeId.toString(16)}`
+                            + ` of ${parentToString}`
+                            + ` not found`);
+                    }
+                    const subNodeMap = new Map();
+                    yield readSubNode(block.blockId, subNodeMap);
+                    const thisToString = `childNodeId=0x${childNodeId.toString(16)}`
+                        + `,nidType=0x${(childNodeId & 0x1f).toString(16)}`
+                        + ` of ${parentToString}`;
+                    const subNode = subNodeMap.get(childNodeId);
+                    if (subNode === undefined) {
+                        return undefined;
+                    }
+                    return {
+                        nodeId: childNodeId,
+                        is4K: trait.is4K,
+                        getChildBy: (childNodeId) => __awaiter(this, void 0, void 0, function* () {
+                            return yield getChildOf(subNode.subBlockId, childNodeId, thisToString);
+                        }),
+                        getData: () => __awaiter(this, void 0, void 0, function* () { return yield getDataOf(subNode.dataBlockId); }),
+                        toString: () => thisToString,
+                    };
+                });
+            }
+            function getSubNodeOf(nodeId) {
+                const node = nodeMap.get(nodeId);
+                if (node === undefined) {
+                    throw new Error(`nodeId=${nodeId} not found`);
+                }
+                const thisToString = `subNode of nodeId=${nodeId},nidType=${nodeId & 0x1f}`;
+                return {
+                    nodeId: nodeId,
+                    is4K: trait.is4K,
+                    getChildBy: (childNodeId) => __awaiter(this, void 0, void 0, function* () {
+                        return getChildOf(node.subBlockId, childNodeId, thisToString);
+                    }),
+                    getData: () => __awaiter(this, void 0, void 0, function* () { return yield getDataOf(node.blockId); }),
+                    toString: () => thisToString,
+                };
+            }
+            return {
+                nodeId: (ptr.nodeId),
+                getParent: () => getOneNodeBy((ptr.parentNodeId)),
+                getChildren: () => Array.from(nodeMap.values())
+                    .filter(it => it.parentNodeId === ptr.nodeId && it.nodeId !== ptr.nodeId)
+                    .map(it => getOneNodeBy(it.nodeId))
+                    .filter(it => it !== undefined),
+                getSubNode: () => getSubNodeOf(ptr.nodeId),
+                getSiblingNode: (nidType) => getOneNodeBy((nodeId & ~0x1f) | (nidType & 0x1f)),
+            };
+        }
+        ;
+        function getOneNodeByOrError(nodeId) {
+            const node = getOneNodeBy(nodeId);
+            if (node === undefined) {
+                throw new Error(`node ${nodeId} must exist and must be valid`);
+            }
+            return node;
+        }
+        return {
+            getOneNodeBy,
+            getOneNodeByOrError,
+            close: () => api.close(),
+        };
+    });
+}
+exports.openLowPst = openLowPst;
+
+
+/***/ }),
+
+/***/ 8526:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTActivity = void 0;
+const PSTMessage_class_1 = __webpack_require__(1973);
+const OutlookProperties_1 = __webpack_require__(9164);
+class PSTActivity extends PSTMessage_class_1.PSTMessage {
+    /**
+     * Creates an instance of PSTActivity.  Represents Journal entries, class IPM.Activity.
+     * https://msdn.microsoft.com/en-us/library/office/aa204771(v=office.11).aspx
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} descriptorIndexNode
+     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
+     * @memberof PSTActivity
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * Contains the display name of the journaling application (for example, "MSWord"), and is typically a free-form attribute of a journal message, usually a string.
+     * https://msdn.microsoft.com/en-us/library/office/cc839662.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTActivity
+     */
+    get logType() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogType, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Represents the start date and time for the journal message.
+     * https://msdn.microsoft.com/en-us/library/office/cc842339.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTActivity
+     */
+    get logStart() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogStart, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Represents the duration, in minutes, of a journal message.
+     * https://msdn.microsoft.com/en-us/library/office/cc765536.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTActivity
+     */
+    get logDuration() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDuration, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Represents the end date and time for the journal message.
+     * https://msdn.microsoft.com/en-us/library/office/cc839572.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTActivity
+     */
+    get logEnd() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogEnd, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Contains metadata about the journal.
+     * https://msdn.microsoft.com/en-us/library/office/cc815433.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTActivity
+     */
+    get logFlags() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogFlags, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Indicates whether the document was printed during journaling.
+     * https://msdn.microsoft.com/en-us/library/office/cc839873.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTActivity
+     */
+    get isDocumentPrinted() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentPrinted, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Indicates whether the document was saved during journaling.
+     * https://msdn.microsoft.com/en-us/library/office/cc815488.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTActivity
+     */
+    get isDocumentSaved() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentSaved, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Indicates whether the document was sent to a routing recipient during journaling.
+     * https://msdn.microsoft.com/en-us/library/office/cc839558.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTActivity
+     */
+    get isDocumentRouted() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentRouted, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Indicates whether the document was sent by e-mail or posted to a server folder during journaling.
+     * https://msdn.microsoft.com/en-us/library/office/cc815353.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTActivity
+     */
+    get isDocumentPosted() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogDocumentPosted, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * Describes the activity that is being recorded.
+     * https://msdn.microsoft.com/en-us/library/office/cc815500.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTActivity
+     */
+    get logTypeDesc() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLogTypeDesc, OutlookProperties_1.OutlookProperties.PSETID_Log));
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTActivity
+     */
+    toJSON() {
+        const clone = Object.assign({
+            messageClass: this.messageClass,
+            subject: this.subject,
+            importance: this.importance,
+            transportMessageHeaders: this.transportMessageHeaders,
+            logType: this.logType,
+            logStart: this.logStart,
+            logDuration: this.logDuration,
+            logEnd: this.logEnd,
+            logFlags: this.logFlags,
+            isDocumentPrinted: this.isDocumentPrinted,
+            isDocumentSaved: this.isDocumentSaved,
+            isDocumentRouted: this.isDocumentRouted,
+            isDocumentPosted: this.isDocumentPosted,
+            logTypeDesc: this.logTypeDesc,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTActivity = PSTActivity;
+
+
+/***/ }),
+
+/***/ 3963:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTAppointment = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTMessage_class_1 = __webpack_require__(1973);
+// PSTAppointment is for Calendar items
+class PSTAppointment extends PSTMessage_class_1.PSTMessage {
+    /**
+     *
+     * @internal
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * Specifies if a meeting request should be sent as an iCal message.
+     * https://msdn.microsoft.com/en-us/library/office/cc839802.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get sendAsICAL() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidSendMeetingAsIcal, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Represents the user’s availability for an appointment.
+     * https://msdn.microsoft.com/en-us/library/office/cc841972.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get busyStatus() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidBusyStatus, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * The user is busy.
+     * https://msdn.microsoft.com/en-us/library/office/cc841972.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get showAsBusy() {
+        return this.busyStatus == 2;
+    }
+    /**
+     * Represents the location of an appointment.
+     * https://msdn.microsoft.com/en-us/library/office/cc842419.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get location() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidLocation, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Represents the date and time when an appointment begins.
+     * https://msdn.microsoft.com/en-us/library/office/cc839929.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAppointment
+     */
+    get startTime() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentStartWhole, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Represents the date and time that an appointment ends.
+     * https://msdn.microsoft.com/en-us/library/office/cc815864.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAppointment
+     */
+    get endTime() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentEndWhole, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Represents the length of time, in minutes, when an appointment is scheduled.
+     * https://msdn.microsoft.com/en-us/library/office/cc842287.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get duration() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentDuration, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the color to use when displaying the calendar.
+     * https://msdn.microsoft.com/en-us/library/office/cc842274.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get color() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentColor, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies whether or not the event is all day.
+     * https://msdn.microsoft.com/en-us/library/office/cc839901.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get subType() {
+        return (this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentSubType, OutlookProperties_1.OutlookProperties.PSETID_Appointment)) != 0);
+    }
+    /**
+     * Specifies a bit field that describes the state of the object.
+     * https://msdn.microsoft.com/en-us/library/office/cc765762.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get meetingStatus() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentStateFlags, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the response status of an attendee.
+     * https://msdn.microsoft.com/en-us/library/office/cc839923.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get responseStatus() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidResponseStatus, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies whether an appointment message is recurrent.
+     * https://msdn.microsoft.com/en-us/library/office/cc765772.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get isRecurring() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurring, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the date and time within the recurrence pattern that the exception will replace.
+     * https://msdn.microsoft.com/en-us/library/office/cc842450.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAppointment
+     */
+    get recurrenceBase() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidExceptionReplaceTime, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the recurrence type of the recurring series.
+     * https://msdn.microsoft.com/en-us/library/office/cc842135.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get recurrenceType() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurrenceType, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies a description of the recurrence pattern of the calendar object.
+     * https://msdn.microsoft.com/en-us/library/office/cc815733.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get recurrencePattern() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRecurrencePattern, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the dates and times when a recurring series occurs by using one of the recurrence patterns and ranges that are specified in [MS-OXOCAL].
+     * https://msdn.microsoft.com/en-us/library/office/cc842017.aspx
+     * @readonly
+     * @type {Buffer}
+     * @memberof PSTAppointment
+     */
+    get recurrenceStructure() {
+        return this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentRecur, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Contains a stream that maps to the persisted format of a TZREG structure, which describes the time zone to be used for the start and end time of a recurring appointment or meeting request.
+     * https://msdn.microsoft.com/en-us/library/office/cc815376.aspx
+     * @readonly
+     * @type {Buffer}
+     * @memberof PSTAppointment
+     */
+    get timezone() {
+        return this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTimeZoneStruct, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies a list of all the attendees except for the organizer, including resources and unsendable attendees.
+     * https://msdn.microsoft.com/en-us/library/office/cc815418.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get allAttendees() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAllAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Contains a list of all the sendable attendees who are also required attendees.
+     * https://msdn.microsoft.com/en-us/library/office/cc842502.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get toAttendees() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidToAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Contains a list of all the sendable attendees who are also optional attendees.
+     * https://msdn.microsoft.com/en-us/library/office/cc839636.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get ccAttendees() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidCcAttendeesString, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the sequence number of a Meeting object.
+     * https://msdn.microsoft.com/en-us/library/office/cc765937.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get appointmentSequence() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentSequence, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Is a hosted meeting?
+     * https://msdn.microsoft.com/en-us/library/ee200872(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get isOnlineMeeting() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidConferencingCheck, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the type of the meeting.
+     * https://msdn.microsoft.com/en-us/library/ee158396(v=exchg.80).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get netMeetingType() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidConferencingType, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the directory server to be used.
+     * https://msdn.microsoft.com/en-us/library/ee201516(v=exchg.80).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get netMeetingServer() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidDirectory, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the email address of the organizer.
+     * https://msdn.microsoft.com/en-us/library/ee203317(v=exchg.80).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get netMeetingOrganizerAlias() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidOrganizerAlias, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the document to be launched when the user joins the meeting.
+     * https://msdn.microsoft.com/en-us/library/ee204395(v=exchg.80).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get netMeetingDocumentPathName() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidCollaborateDoc, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * The PidLidNetShowUrl property ([MS-OXPROPS] section 2.175) specifies the URL to be launched when the user joins the meeting
+     * https://msdn.microsoft.com/en-us/library/ee179451(v=exchg.80).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get netShowURL() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidNetShowUrl, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Specifies the date and time at which the meeting-related object was sent.
+     * https://msdn.microsoft.com/en-us/library/ee237112(v=exchg.80).aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAppointment
+     */
+    get attendeeCriticalChange() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAttendeeCriticalChange, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
+    }
+    /**
+     * Indicates that this meeting response is a counter proposal.
+     * https://msdn.microsoft.com/en-us/magazine/cc815846.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get appointmentCounterProposal() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidAppointmentCounterProposal, OutlookProperties_1.OutlookProperties.PSETID_Appointment));
+    }
+    /**
+     * Indicates whether the user did not include any text in the body of the Meeting Response object.
+     * https://msdn.microsoft.com/en-us/library/ee159822(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAppointment
+     */
+    get isSilent() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidIsSilent, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
+    }
+    /**
+     * Identifies required attendees for the appointment or meeting.
+     * https://msdn.microsoft.com/en-us/library/ee160700(v=exchg.80).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAppointment
+     */
+    get requiredAttendees() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidRequiredAttendees, OutlookProperties_1.OutlookProperties.PSETID_Meeting));
+    }
+    /**
+     * Contains the Windows Locale ID of the end-user who created this message.
+     * https://msdn.microsoft.com/en-us/library/ee201602(v=exchg.80).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAppointment
+     */
+    get localeId() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PidTagMessageLocaleId);
+    }
+    /**
+     * JSON stringify the object properties.  Large fields (like body) aren't included.
+     * @returns {string}
+     * @memberof PSTAppointment
+     */
+    toJSON() {
+        const clone = Object.assign({
+            messageClass: this.messageClass,
+            subject: this.subject,
+            importance: this.importance,
+            transportMessageHeaders: this.transportMessageHeaders,
+            sendAsICAL: this.sendAsICAL,
+            busyStatus: this.busyStatus,
+            showAsBusy: this.showAsBusy,
+            location: this.location,
+            startTime: this.startTime,
+            endTime: this.endTime,
+            duration: this.duration,
+            color: this.color,
+            subType: this.subType,
+            meetingStatus: this.meetingStatus,
+            isRecurring: this.isRecurring,
+            recurrenceBase: this.recurrenceBase,
+            recurrenceType: this.recurrenceType,
+            recurrencePattern: this.recurrencePattern,
+            recurrenceStructure: this.recurrenceStructure,
+            timezone: this.timezone,
+            allAttendees: this.allAttendees,
+            toAttendees: this.toAttendees,
+            ccAttendees: this.ccAttendees,
+            appointmentSequence: this.appointmentSequence,
+            isOnlineMeeting: this.isOnlineMeeting,
+            netMeetingType: this.netMeetingType,
+            netMeetingServer: this.netMeetingServer,
+            netMeetingOrganizerAlias: this.netMeetingOrganizerAlias,
+            netMeetingDocumentPathName: this.netMeetingDocumentPathName,
+            attendeeCriticalChange: this.attendeeCriticalChange,
+            appointmentCounterProposal: this.appointmentCounterProposal,
+            isSilent: this.isSilent,
+            requiredAttendees: this.requiredAttendees,
+            localeId: this.localeId,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTAppointment = PSTAppointment;
+
+
+/***/ }),
+
+/***/ 9983:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTAttachment = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PropertyTypeObject_1 = __webpack_require__(1635);
+const PSTObject_class_1 = __webpack_require__(7272);
+// Class containing attachment information.
+class PSTAttachment extends PSTObject_class_1.PSTObject {
+    /**
+     * Creates an instance of PSTAttachment.
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {Map<number, PSTDescriptorItem>} localDescriptorItems
+     * @memberof PSTAttachment
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * The PR_ATTACH_SIZE property contains the sum, in bytes, of the sizes of all properties on an attachment.
+     * https://msdn.microsoft.com/en-us/library/gg156074(v=winembedded.70).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get size() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_SIZE);
+    }
+    /**
+     * Contains the creation date and time of a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc765677.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAttachment
+     */
+    get creationTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CREATION_TIME);
+    }
+    /**
+     * Contains the date and time when the object or subobject was last modified.
+     * https://msdn.microsoft.com/en-us/library/office/cc815689.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTAttachment
+     */
+    get modificationTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_MODIFICATION_TIME);
+    }
+    /**
+     * Get an embedded message.
+     * @readonly
+     * @type {PSTMessage}
+     * @memberof PSTAttachment
+     */
+    getEmbeddedPSTMessage() {
+        var _a, _b;
+        return __awaiter(this, void 0, void 0, function* () {
+            const attachMethod = (_a = this._propertyFinder.findByKey(0x3705)) === null || _a === void 0 ? void 0 : _a.value;
+            try {
+                if ( true
+                    && typeof attachMethod === 'number'
+                    && attachMethod == PSTAttachment.ATTACHMENT_METHOD_EMBEDDED) {
+                    const attachDataBinary = (_b = this._propertyFinder.findByKey(0x3701)) === null || _b === void 0 ? void 0 : _b.value;
+                    if (false) {}
+                    else if (attachDataBinary instanceof ArrayBuffer) {
+                        // PT_BINARY
+                        throw new Error("Currently getEmbeddedPSTMessage and ATTACHMENT_METHOD_EMBEDDED need attachDataBinary to be PT_OBJECT");
+                    }
+                    else if (attachDataBinary instanceof PropertyTypeObject_1.PropertyTypeObject) {
+                        const { subNodeId } = attachDataBinary;
+                        const subNode = yield this._subNode.getChildBy(subNodeId);
+                        if (subNode === undefined) {
+                            throw new Error(`childNodeId=0x${subNodeId.toString(16)}`
+                                + ` of ${this._subNode} not found`);
+                        }
+                        return yield this._rootProvider.getItemOf(this._node, subNode, undefined);
+                    }
+                }
+            }
+            catch (err) {
+                console.error('PSTAttachment::embeddedPSTMessage createAppropriatePSTMessageObject failed\n' +
+                    err);
+                throw err;
+            }
+            return null;
+        });
+    }
+    /**
+     * Get attachment content as binary data
+     */
+    get fileData() {
+        const attachmentDataObject = this._propertyFinder.findByKey(OutlookProperties_1.OutlookProperties.PR_ATTACH_DATA_BIN);
+        if (attachmentDataObject !== undefined) {
+            const { value } = attachmentDataObject;
+            if (value instanceof ArrayBuffer) {
+                return value;
+            }
+        }
+        return undefined;
+    }
+    /**
+     * Size of the attachment file itself.
+     * https://msdn.microsoft.com/en-us/library/gg154634(v=winembedded.70).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get filesize() {
+        const attachmentDataObject = this._propertyFinder.findByKey(OutlookProperties_1.OutlookProperties.PR_ATTACH_DATA_BIN);
+        if (attachmentDataObject !== undefined) {
+            const { value } = attachmentDataObject;
+            if (value instanceof ArrayBuffer) {
+                return value.byteLength;
+            }
+            else if (value instanceof PropertyTypeObject_1.PropertyTypeObject) {
+                return value.size;
+            }
+        }
+        return 0;
+    }
+    /**
+     * Contains an attachment's base file name and extension, excluding path.
+     * https://msdn.microsoft.com/en-us/library/office/cc842517.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get filename() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FILENAME);
+    }
+    /**
+     * Contains a MAPI-defined constant representing the way the contents of an attachment can be accessed.
+     * https://msdn.microsoft.com/en-us/library/office/cc815439.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get attachMethod() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_METHOD);
+    }
+    /**
+     * Contains a number that uniquely identifies the attachment within its parent message.
+     * https://msdn.microsoft.com/en-us/library/office/cc841969.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get attachNum() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_NUM);
+    }
+    /**
+     * Contains an attachment's long filename and extension, excluding path.
+     * https://msdn.microsoft.com/en-us/library/office/cc842157.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get longFilename() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_LONG_FILENAME);
+    }
+    /**
+     * Contains an attachment's fully-qualified path and filename.
+     * https://msdn.microsoft.com/en-us/library/office/cc839889.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get pathname() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_PATHNAME);
+    }
+    /**
+     * Contains an offset, in characters, to use in rendering an attachment within the main message text.
+     * https://msdn.microsoft.com/en-us/library/office/cc842381.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get renderingPosition() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RENDERING_POSITION);
+    }
+    /**
+     * Contains an attachment's fully-qualified long path and filename.
+     * https://msdn.microsoft.com/en-us/library/office/cc815443.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get longPathname() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_LONG_PATHNAME);
+    }
+    /**
+     * Contains formatting information about a Multipurpose Internet Mail Extensions (MIME) attachment.
+     * https://msdn.microsoft.com/en-us/library/office/cc842516.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get mimeTag() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_MIME_TAG);
+    }
+    /**
+     * Contains the MIME sequence number of a MIME message attachment.
+     * https://msdn.microsoft.com/en-us/library/office/cc963256.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTAttachment
+     */
+    get mimeSequence() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_MIME_SEQUENCE);
+    }
+    /**
+     * Contains the content identification header of a Multipurpose Internet Mail Extensions (MIME) message attachment.
+     * https://msdn.microsoft.com/en-us/library/office/cc765868.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTAttachment
+     */
+    get contentId() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_CONTENT_ID);
+    }
+    /**
+     * Indicates that this attachment is not available to HTML rendering applications and should be ignored in Multipurpose Internet Mail Extensions (MIME) processing.
+     * https://msdn.microsoft.com/en-us/library/office/cc765876.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAttachment
+     */
+    get isAttachmentInvisibleInHtml() {
+        const actionFlag = this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FLAGS);
+        return (actionFlag & 0x1) > 0;
+    }
+    /**
+     * Indicates that this attachment is not available to applications rendering in Rich Text Format (RTF) and should be ignored by MAPI.
+     * https://msdn.microsoft.com/en-us/library/office/cc765876.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTAttachment
+     */
+    get isAttachmentInvisibleInRTF() {
+        const actionFlag = this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTACH_FLAGS);
+        return (actionFlag & 0x2) > 0;
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTAttachment
+     */
+    toJSON() {
+        const clone = Object.assign({
+            size: this.size,
+            creationTime: this.creationTime,
+            modificationTime: this.modificationTime,
+            filename: this.filename,
+            attachMethod: this.attachMethod,
+            attachNum: this.attachNum,
+            longFilename: this.longFilename,
+            pathname: this.pathname,
+            renderingPosition: this.renderingPosition,
+            longPathname: this.longPathname,
+            mimeTag: this.mimeTag,
+            mimeSequence: this.mimeSequence,
+            contentId: this.contentId,
+            isAttachmentInvisibleInHtml: this.isAttachmentInvisibleInHtml,
+            isAttachmentInvisibleInRTF: this.isAttachmentInvisibleInRTF,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTAttachment = PSTAttachment;
+PSTAttachment.ATTACHMENT_METHOD_NONE = 0;
+PSTAttachment.ATTACHMENT_METHOD_BY_VALUE = 1;
+PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE = 2;
+PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE_RESOLVE = 3;
+PSTAttachment.ATTACHMENT_METHOD_BY_REFERENCE_ONLY = 4;
+PSTAttachment.ATTACHMENT_METHOD_EMBEDDED = 5;
+PSTAttachment.ATTACHMENT_METHOD_OLE = 6;
+
+
+/***/ }),
+
+/***/ 5920:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTContact = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTMessage_class_1 = __webpack_require__(1973);
+class PSTContact extends PSTMessage_class_1.PSTMessage {
+    /**
+     *
+     * @internal
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * Contains the recipient's account name.
+     * https://msdn.microsoft.com/en-us/library/office/cc842401.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get account() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ACCOUNT);
+    }
+    /**
+     * Contains a telephone number that the message recipient can use to reach the sender.
+     * https://msdn.microsoft.com/en-us/library/office/cc839943.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get callbackTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CALLBACK_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains a generational abbreviation that follows the full name of the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc842136.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get generation() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GENERATION);
+    }
+    /**
+     * Contains the first or given name of the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc815351.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get givenName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GIVEN_NAME);
+    }
+    /**
+     * Contains a government identifier for the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc815890.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get governmentIdNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_GOVERNMENT_ID_NUMBER);
+    }
+    /**
+     * Contains the primary telephone number of the recipient's place of business.
+     * https://msdn.microsoft.com/en-us/library/office/cc839937.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the primary telephone number of the recipient's home.
+     * https://msdn.microsoft.com/en-us/library/office/cc815389.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the initials for parts of the full name of the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc839843.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get initials() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INITIALS);
+    }
+    /**
+     * Contains a keyword that identifies the recipient to the recipient's system administrator.
+     * https://msdn.microsoft.com/en-us/library/office/cc842250.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get keyword() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_KEYWORD);
+    }
+    /**
+     * Contains a value that indicates the language in which the messaging user is writing messages.
+     * https://msdn.microsoft.com/en-us/library/office/cc839724.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get language() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LANGUAGE);
+    }
+    /**
+     * Contains the location of the recipient in a format that is useful to the recipient's organization.
+     * https://msdn.microsoft.com/en-us/library/office/cc815567.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get location() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LOCATION);
+    }
+    /**
+     * Contains the common name of the message handling system.
+     * https://msdn.microsoft.com/en-us/library/office/cc842474.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get mhsCommonName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MHS_COMMON_NAME);
+    }
+    /**
+     * Contains an organizational ID number for the contact, such as an employee ID number.
+     * https://msdn.microsoft.com/en-us/library/office/cc765672.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get organizationalIdNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORGANIZATIONAL_ID_NUMBER);
+    }
+    /**
+     * Contains the last or surname of the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc765704.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get surname() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SURNAME);
+    }
+    /**
+     * Contains the original display name for an entry copied from an address book to a personal address book or other writable address book.
+     * https://msdn.microsoft.com/en-us/library/office/cc765709.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get originalDisplayName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_NAME);
+    }
+    /**
+     * Contains the recipient's postal address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842549.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get postalAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POSTAL_ADDRESS);
+    }
+    /**
+     * Contains the recipient's company name.
+     * https://msdn.microsoft.com/en-us/library/office/cc842192.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get companyName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PT_UNICODE);
+    }
+    /**
+     * Contains the recipient's job title.
+     * https://msdn.microsoft.com/en-us/library/office/cc815831.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get title() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TITLE);
+    }
+    /**
+     * Contains a name for the department in which the recipient works.
+     * https://msdn.microsoft.com/en-us/library/office/cc839825.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get departmentName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DEPARTMENT_NAME);
+    }
+    /**
+     * Contains the recipient's office location.
+     * https://msdn.microsoft.com/en-us/library/office/cc842269.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get officeLocation() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OFFICE_LOCATION);
+    }
+    /**
+     * Contains the recipient's primary telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc839969.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get primaryTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains a secondary telephone number at the recipient's place of business.
+     * https://msdn.microsoft.com/en-us/library/office/cc841990.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get business2TelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS2_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the recipient's cellular telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc839798.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get mobileTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MOBILE_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the recipient's radio telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc839806.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get radioTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RADIO_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the recipient's car telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc815394.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get carTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CAR_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains an alternate telephone number for the recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc839561.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains a recipient's display name in a secure form that cannot be changed.
+     * https://msdn.microsoft.com/en-us/library/office/cc815723.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get transmittableDisplayName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TRANSMITABLE_DISPLAY_NAME);
+    }
+    /**
+     * Contains the recipient's pager telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc765824.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get pagerTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PAGER_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the telephone number of the recipient's primary fax machine.
+     * https://msdn.microsoft.com/en-us/library/office/cc815713.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get primaryFaxNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_FAX_NUMBER);
+    }
+    /**
+     * Contains the telephone number of the recipient's business fax machine.
+     * https://msdn.microsoft.com/en-us/library/office/cc765799.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessFaxNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_FAX_NUMBER);
+    }
+    /**
+     * Contains the telephone number of the recipient's home fax machine.
+     * https://msdn.microsoft.com/en-us/library/office/cc842109.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeFaxNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_FAX_NUMBER);
+    }
+    /**
+     * Contains the name of the recipient's country/region.
+     * https://msdn.microsoft.com/en-us/library/office/cc842494.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessAddressCountry() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COUNTRY);
+    }
+    /**
+     * Contains the name of the recipient's locality, such as the town or city.
+     * https://msdn.microsoft.com/en-us/library/office/cc815711.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessAddressCity() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_LOCALITY);
+    }
+    /**
+     * Contains the name of the recipient's state or province.
+     * https://msdn.microsoft.com/en-us/library/office/cc839544.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessAddressStateOrProvince() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_STATE_OR_PROVINCE);
+    }
+    /**
+     * Contains the recipient's street address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765810.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessAddressStreet() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_STREET_ADDRESS);
+    }
+    /**
+     * Contains the postal code for the recipient's postal address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839851.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessPostalCode() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POSTAL_CODE);
+    }
+    /**
+     * Contains the number or identifier of the recipient's post office box.
+     * https://msdn.microsoft.com/en-us/library/office/cc815522.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessPoBox() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_POST_OFFICE_BOX);
+    }
+    /**
+     * Contains the recipient's telex number.
+     * https://msdn.microsoft.com/en-us/library/office/cc765894.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get telexNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TELEX_NUMBER);
+    }
+    /**
+     * Contains the recipient's ISDN-capable telephone number.
+     * https://msdn.microsoft.com/en-us/library/office/cc765863.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get isdnNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ISDN_NUMBER);
+    }
+    /**
+     * Contains the telephone number of the recipient's administrative assistant.
+     * https://msdn.microsoft.com/en-us/library/office/cc840012.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get assistantTelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ASSISTANT_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains a secondary telephone number at the recipient's home.
+     * https://msdn.microsoft.com/en-us/library/office/cc815540.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get home2TelephoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME2_TELEPHONE_NUMBER);
+    }
+    /**
+     * Contains the name of the recipient's administrative assistant.
+     * https://msdn.microsoft.com/en-us/library/office/cc815319.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get assistant() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ASSISTANT);
+    }
+    /**
+     * Contains the names of the hobbies of the messaging user.
+     * https://msdn.microsoft.com/en-us/library/office/cc815391.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get hobbies() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOBBIES);
+    }
+    /**
+     * Contains the middle name of a contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc815329.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get middleName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MIDDLE_NAME);
+    }
+    /**
+     * Contains the display name prefix (such as Miss, Mr., Mrs.) for the messaging user.
+     * https://msdn.microsoft.com/en-us/library/office/cc765538.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get displayNamePrefix() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME_PREFIX);
+    }
+    /**
+     * Contains the profession of the user.
+     * https://msdn.microsoft.com/en-us/library/office/cc765792.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get profession() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PROFESSION);
+    }
+    /**
+     * Contains the name of the mail user's referral.
+     * https://msdn.microsoft.com/en-us/library/office/cc765803.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get preferredByName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_REFERRED_BY_NAME);
+    }
+    /**
+     * Contains the user’s spouse name.
+     * https://msdn.microsoft.com/en-us/library/office/cc765832.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get spouseName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SPOUSE_NAME);
+    }
+    /**
+     * Contains the name of the network used to transmit the message.
+     * https://msdn.microsoft.com/en-us/library/office/cc839633.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get computerNetworkName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMPUTER_NETWORK_NAME);
+    }
+    /**
+     * Contains the contact’s customer ID number.
+     * https://msdn.microsoft.com/en-us/library/office/cc842178.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get customerId() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CUSTOMER_ID);
+    }
+    /**
+     * Contains the telephone number for the contact’s text telephone (TTY) or telecommunication device for the deaf (TDD).
+     * https://msdn.microsoft.com/en-us/library/office/cc765580.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get ttytddPhoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TTYTDD_PHONE_NUMBER);
+    }
+    /**
+     * Contains the contact’s File Transfer Protocol (FTP) URL. FTP is a protocol that is used to transfer data, as specified in [RFC959].
+     * https://msdn.microsoft.com/en-us/library/office/cc839830.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get ftpSite() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_FTP_SITE);
+    }
+    /**
+     * Contains the name of the recipient's manager.
+     * https://msdn.microsoft.com/en-us/library/office/cc842009.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get managerName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MANAGER_NAME);
+    }
+    /**
+     * Contains the nickname of the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc765603.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get nickname() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_NICKNAME);
+    }
+    /**
+     * Contains the URL of a user's personal home page.
+     * https://msdn.microsoft.com/en-us/library/office/cc765751.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get personalHomePage() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PERSONAL_HOME_PAGE);
+    }
+    /**
+     * Contains the URL of the home page for the business.
+     * https://msdn.microsoft.com/en-us/library/office/cc842385.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get businessHomePage() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BUSINESS_HOME_PAGE);
+    }
+    /**
+     * Get the note associated with the contact.
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get note() {
+        return this.getStringItem(0x6619);
+    }
+    /**
+     * Get a named string item from the map
+     * @param {number} key
+     * @returns {string}
+     * @memberof PSTContact
+     */
+    getNamedStringItem(key) {
+        const id = this._rootProvider.getNameToIdMapItem(key, OutlookProperties_1.OutlookProperties.PSETID_Address);
+        if (id != -1) {
+            return this.getStringItem(id);
+        }
+        return '';
+    }
+    /**
+     * Contains the main telephone number for a company
+     * https://msdn.microsoft.com/en-us/library/office/cc839651.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get companyMainPhoneNumber() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMPANY_MAIN_PHONE_NUMBER);
+    }
+    /**
+     * Contains a list of names of children
+     * https://msdn.microsoft.com/en-us/library/office/cc839533.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get childrensNames() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CHILDRENS_NAMES);
+    }
+    /**
+     * Contains the city for the recipient's home address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815582.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressCity() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_CITY);
+    }
+    /**
+     * Contains the county in a contact's address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842548.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressCountry() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_COUNTRY);
+    }
+    /**
+     * Contains the postal code for the user's home address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815880.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressPostalCode() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_POSTAL_CODE);
+    }
+    /**
+     * Contains the state or province portion of a user's address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839958.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressStateOrProvince() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_STATE_OR_PROVINCE);
+    }
+    /**
+     * Contains the street portion of a user's address.
+     * https://msdn.microsoft.com/en-us/library/office/cc841997.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressStreet() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_STREET);
+    }
+    /**
+     * Contains the post office box information for a user's address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842440.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddressPostOfficeBox() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_HOME_ADDRESS_POST_OFFICE_BOX);
+    }
+    /**
+     * Contains the name of the mail user's other locality, such as the town or city.
+     * https://msdn.microsoft.com/en-us/library/office/cc765881.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressCity() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_CITY);
+    }
+    /**
+     * Contains the mail user's other country/region.
+     * https://msdn.microsoft.com/en-us/library/office/cc765814.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressCountry() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_CITY);
+    }
+    /**
+     * Contains the postal code for the mail user's other postal address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842261.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressPostalCode() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_POSTAL_CODE);
+    }
+    /**
+     * Contains the name of state or province used in the other address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815782.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressStateOrProvince() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_STATE_OR_PROVINCE);
+    }
+    /**
+     * Contains the mail user's other street address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839546.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressStreet() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_STREET);
+    }
+    /**
+     * Contains the post office box for a contact's other address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842396.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddressPostOfficeBox() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_OTHER_ADDRESS_POST_OFFICE_BOX);
+    }
+    ///////////////////////////////////////////////////
+    // Below are the values from the name to id map...
+    ///////////////////////////////////////////////////
+    /**
+     * Specifies the name under which the contact is filed when displaying a list of contacts.
+     * https://msdn.microsoft.com/en-us/library/office/cc842002.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fileUnder() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFileUnder);
+    }
+    /**
+     * Specifies the complete address of the contact’s home address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839539.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get homeAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidHomeAddress);
+    }
+    /**
+     * Specifies the contact's complete work address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815905.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddress);
+    }
+    /**
+     * Specifies the complete address of the contact’s other address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815383.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get otherAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidOtherAddress);
+    }
+    /**
+     * Specifies which physical address is the contact’s mailing address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815430.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTContact
+     */
+    get postalAddressId() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidPostalAddressId, OutlookProperties_1.OutlookProperties.PSETID_Address));
+    }
+    /**
+     * Specifies the contact’s business Web page URL.
+     * https://msdn.microsoft.com/en-us/library/office/cc842001.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get html() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidHtml);
+    }
+    /**
+     * Specifies the street portion of the contact's work mailing address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815537.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressStreet() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressStreet);
+    }
+    /**
+     * Specifies the city or locality portion of the contact's work address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765923.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressCity() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressCity);
+    }
+    /**
+     * Specifies the state or province portion of the contact's work mailing address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842152.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressState() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressState);
+    }
+    /**
+     * Specifies the postal code (ZIP code) portion of the contact's work address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842066.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressPostalCode() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressPostalCode);
+    }
+    /**
+     * Specifies the country or region portion of the contact's work address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765698.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressCountry() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressCountry);
+    }
+    /**
+     * Specifies the post office box portion of the contact's work.
+     * https://msdn.microsoft.com/en-us/library/office/cc815563.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get workAddressPostOfficeBox() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidWorkAddressPostOfficeBox);
+    }
+    /**
+     * Specifies the contact’s instant messaging address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815607.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get instantMessagingAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidInstantMessagingAddress);
+    }
+    /**
+     * Specifies the user-readable display name for the first e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815460.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email1DisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1DisplayName);
+    }
+    /**
+     * Specifies the address type of the first e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815570.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email1AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1AddressType);
+    }
+    /**
+     * Specifies the first e-mail address of the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc842050.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email1EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1EmailAddress);
+    }
+    /**
+     * Specifies the first display name that corresponds to the e-mail address that is specified for the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc815564.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email1OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail1OriginalDisplayName);
+    }
+    /**
+     * Specifies the user-readable display name for the second e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839675.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email2DisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2DisplayName);
+    }
+    /**
+     * Specifies the address type of the second e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815361.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email2AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2DisplayName);
+    }
+    /**
+     * Specifies the second e-mail address of the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc842205.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email2EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2EmailAddress);
+    }
+    /**
+     * Specifies the second display name that corresponds to the e-mail address specified for the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc765618.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email2OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail2OriginalDisplayName);
+    }
+    /**
+     * Specifies the user-readable display name for the third e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc815669.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email3DisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3DisplayName);
+    }
+    /**
+     * Specifies the address type of the third e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842438.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email3AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3AddressType);
+    }
+    /**
+     * Specifies the third e-mail address of the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc815504.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email3EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3EmailAddress);
+    }
+    /**
+     * Specifies the third display name that corresponds to the e-mail address that is specified for the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc815833.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get email3OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidEmail3OriginalDisplayName);
+    }
+    /**
+     * Specifies the address type for the business fax address for a contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc842026.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax1AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1AddressType);
+    }
+    /**
+     * Specifies the e-mail address of the contact’s business fax.
+     * https://msdn.microsoft.com/en-us/library/office/cc765813.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax1EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1EmailAddress);
+    }
+    /**
+     * Specifies the original display name of the contact’s business fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765694.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax1OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax1OriginalDisplayName);
+    }
+    /**
+     * Specifies the address type for the contact’s home fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839741.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax2AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2AddressType);
+    }
+    /**
+     * Specifies the e-mail address of the contact’s home fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765668.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax2EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2EmailAddress);
+    }
+    /**
+     * Specifies the original display name of the contact’s home fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842101.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax2OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax2OriginalDisplayName);
+    }
+    /**
+     * Specifies the address type for the other contact’s fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839752.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax3AddressType() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3AddressType);
+    }
+    /**
+     * Specifies the email address of the contact’s other fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842217.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax3EmailAddress() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3EmailAddress);
+    }
+    /**
+     * Specifies the original display name of the contact’s other fax address.
+     * https://msdn.microsoft.com/en-us/library/office/cc765682.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get fax3OriginalDisplayName() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFax3OriginalDisplayName);
+    }
+    /**
+     * Specifies a URL path from which a client can retrieve free/busy information for the contact as an iCal file, as specified in [MS-OXCICAL].
+     * https://msdn.microsoft.com/en-us/library/office/cc765766.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTContact
+     */
+    get freeBusyLocation() {
+        return this.getNamedStringItem(OutlookProperties_1.OutlookProperties.PidLidFreeBusyLocation);
+    }
+    /**
+     * Contains the birthday of the contact.
+     * https://msdn.microsoft.com/en-us/library/office/cc842301.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTContact
+     */
+    get birthday() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PidTagBirthday);
+    }
+    /**
+     * Contains the date of a user's wedding anniversary.
+     * https://msdn.microsoft.com/en-us/library/office/cc842132.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTContact
+     */
+    get anniversary() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PidTagWeddingAnniversary);
+    }
+    /**
+     * Specifies the phonetic pronunciation of the surname of the contact.
+     */
+    get yomiLastName() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiLastName, OutlookProperties_1.OutlookProperties.PSETID_Address));
+    }
+    /**
+     * Specifies the phonetic pronunciation of the contact's given name.
+     */
+    get yomiFirstName() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiFirstName, OutlookProperties_1.OutlookProperties.PSETID_Address));
+    }
+    /**
+     * Specifies the phonetic pronunciation of the contact's company name.
+     */
+    get yomiCompanyName() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidYomiCompanyName, OutlookProperties_1.OutlookProperties.PSETID_Address));
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTContact
+     */
+    toJSON() {
+        const clone = Object.assign({
+            messageClass: this.messageClass,
+            subject: this.subject,
+            importance: this.importance,
+            transportMessageHeaders: this.transportMessageHeaders,
+            account: this.account,
+            callbackTelephoneNumber: this.callbackTelephoneNumber,
+            generation: this.generation,
+            givenName: this.givenName,
+            governmentIdNumber: this.governmentIdNumber,
+            businessTelephoneNumber: this.businessTelephoneNumber,
+            homeTelephoneNumber: this.homeTelephoneNumber,
+            initials: this.initials,
+            keyword: this.keyword,
+            language: this.language,
+            location: this.location,
+            mhsCommonName: this.mhsCommonName,
+            organizationalIdNumber: this.organizationalIdNumber,
+            surname: this.surname,
+            originalDisplayName: this.originalDisplayName,
+            postalAddress: this.postalAddress,
+            companyName: this.companyName,
+            title: this.title,
+            departmentName: this.departmentName,
+            officeLocation: this.officeLocation,
+            primaryTelephoneNumber: this.primaryTelephoneNumber,
+            business2TelephoneNumber: this.business2TelephoneNumber,
+            mobileTelephoneNumber: this.mobileTelephoneNumber,
+            radioTelephoneNumber: this.radioTelephoneNumber,
+            carTelephoneNumber: this.carTelephoneNumber,
+            otherTelephoneNumber: this.otherTelephoneNumber,
+            transmittableDisplayName: this.transmittableDisplayName,
+            pagerTelephoneNumber: this.pagerTelephoneNumber,
+            primaryFaxNumber: this.primaryFaxNumber,
+            businessFaxNumber: this.businessFaxNumber,
+            homeFaxNumber: this.homeFaxNumber,
+            businessAddressCountry: this.businessAddressCountry,
+            businessAddressCity: this.businessAddressCity,
+            businessAddressStateOrProvince: this.businessAddressStateOrProvince,
+            businessAddressStreet: this.businessAddressStreet,
+            businessPostalCode: this.businessPostalCode,
+            businessPoBox: this.businessPoBox,
+            telexNumber: this.telexNumber,
+            isdnNumber: this.isdnNumber,
+            assistantTelephoneNumber: this.assistantTelephoneNumber,
+            home2TelephoneNumber: this.home2TelephoneNumber,
+            assistant: this.assistant,
+            hobbies: this.hobbies,
+            middleName: this.middleName,
+            displayNamePrefix: this.displayNamePrefix,
+            profession: this.profession,
+            preferredByName: this.preferredByName,
+            spouseName: this.spouseName,
+            computerNetworkName: this.computerNetworkName,
+            customerId: this.customerId,
+            ttytddPhoneNumber: this.ttytddPhoneNumber,
+            ftpSite: this.ftpSite,
+            managerName: this.managerName,
+            nickname: this.nickname,
+            personalHomePage: this.personalHomePage,
+            businessHomePage: this.businessHomePage,
+            companyMainPhoneNumber: this.companyMainPhoneNumber,
+            childrensNames: this.childrensNames,
+            homeAddressCity: this.homeAddressCity,
+            homeAddressCountry: this.homeAddressCountry,
+            homeAddressPostalCode: this.homeAddressPostalCode,
+            homeAddressStateOrProvince: this.homeAddressStateOrProvince,
+            homeAddressStreet: this.homeAddressStreet,
+            homeAddressPostOfficeBox: this.homeAddressPostOfficeBox,
+            otherAddressCity: this.otherAddressCity,
+            otherAddressCountry: this.otherAddressCountry,
+            otherAddressPostalCode: this.otherAddressPostalCode,
+            otherAddressStateOrProvince: this.otherAddressStateOrProvince,
+            otherAddressStreet: this.otherAddressStreet,
+            otherAddressPostOfficeBox: this.otherAddressPostOfficeBox,
+            fileUnder: this.fileUnder,
+            homeAddress: this.homeAddress,
+            workAddress: this.workAddress,
+            otherAddress: this.otherAddress,
+            postalAddressId: this.postalAddressId,
+            html: this.html,
+            workAddressStreet: this.workAddressStreet,
+            workAddressCity: this.workAddressCity,
+            workAddressState: this.workAddressState,
+            workAddressPostalCode: this.workAddressPostalCode,
+            workAddressCountry: this.workAddressCountry,
+            workAddressPostOfficeBox: this.workAddressPostOfficeBox,
+            instantMessagingAddress: this.instantMessagingAddress,
+            email1DisplayName: this.email1DisplayName,
+            email1AddressType: this.email1AddressType,
+            email1EmailAddress: this.email1EmailAddress,
+            email1OriginalDisplayName: this.email1OriginalDisplayName,
+            email2DisplayName: this.email2DisplayName,
+            email2AddressType: this.email2AddressType,
+            email2EmailAddress: this.email2EmailAddress,
+            email2OriginalDisplayName: this.email2OriginalDisplayName,
+            email3DisplayName: this.email3DisplayName,
+            email3AddressType: this.email3AddressType,
+            email3EmailAddress: this.email3EmailAddress,
+            email3OriginalDisplayName: this.email3OriginalDisplayName,
+            fax1AddressType: this.fax1AddressType,
+            fax1EmailAddress: this.fax1EmailAddress,
+            fax1OriginalDisplayName: this.fax1OriginalDisplayName,
+            fax2AddressType: this.fax2AddressType,
+            fax2EmailAddress: this.fax2EmailAddress,
+            fax2OriginalDisplayName: this.fax2OriginalDisplayName,
+            fax3AddressType: this.fax3AddressType,
+            fax3EmailAddress: this.fax3EmailAddress,
+            fax3OriginalDisplayName: this.fax3OriginalDisplayName,
+            freeBusyLocation: this.freeBusyLocation,
+            birthday: this.birthday,
+            anniversary: this.anniversary,
+            yomiLastName: this.yomiLastName,
+            yomiFirstName: this.yomiFirstName,
+            yomiCompanyName: this.yomiCompanyName,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTContact = PSTContact;
+
+
+/***/ }),
+
+/***/ 3619:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTFile = void 0;
+const PSTFolder_class_1 = __webpack_require__(2752);
+const PSTMessageStore_class_1 = __webpack_require__(1275);
+const PSTUtil_class_1 = __webpack_require__(6621);
+const NodeMap_class_1 = __webpack_require__(9774);
+const PAUtil_1 = __webpack_require__(4087);
+const PHUtil_1 = __webpack_require__(702);
+const PropertyContextUtil_1 = __webpack_require__(1662);
+const PropertyValueResolverV1_1 = __webpack_require__(3805);
+const iconv_lite_1 = __importDefault(__webpack_require__(4914));
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+class PSTFile {
+    /**
+     * Creates an instance of PSTFile.  File is opened in constructor.
+     * @internal
+     * @param {string} fileName
+     * @memberof PSTFile
+     */
+    constructor(store, nodeMap, opts) {
+        PSTFile.nodeMap = nodeMap;
+        this._store = store;
+        this._resolver = new PropertyValueResolverV1_1.PropertyValueResolverV1((array) => __awaiter(this, void 0, void 0, function* () {
+            return iconv_lite_1.default.decode(Buffer.from(array), (opts && opts.ansiEncoding) || "latin1");
+        }));
+    }
+    /**
+     * Close the file.
+     * @memberof PSTFile
+     */
+    close() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this._store.close();
+        });
+    }
+    /**
+     * Get name to ID map item.
+     * @param {number} key
+     * @param {number} idx
+     * @returns {number}
+     * @memberof PSTFile
+     */
+    getNameToIdMapItem(key, idx) {
+        return PSTFile.nodeMap.getId(key, idx);
+    }
+    /**
+     * Get public string to id map item.
+     * @static
+     * @param {string} key
+     * @returns {number}
+     * @memberof PSTFile
+     */
+    static getPublicStringToIdMapItem(key) {
+        return PSTFile.nodeMap.getId(key);
+    }
+    /**
+     * Get property name from id.
+     * @static
+     * @param {number} propertyId
+     * @param {boolean} bNamed
+     * @returns {string}
+     * @memberof PSTFile
+     */
+    static getPropertyName(propertyId, bNamed) {
+        return PSTUtil_class_1.PSTUtil.propertyName.get(propertyId);
+    }
+    /**
+     * Get name to id map key.
+     * @static
+     * @param {number} propId
+     * @returns {long}
+     * @memberof PSTFile
+     */
+    static getNameToIdMapKey(propId) {
+        return PSTFile.nodeMap.getNumericName(propId);
+    }
+    /**
+     * Get the message store of the PST file.  Note that this doesn't really
+     * have much information, better to look under the root folder.
+     * @returns {PSTMessageStore}
+     * @memberof PSTFile
+     */
+    getMessageStore() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const node = this._store.getOneNodeBy(PSTFile.MESSAGE_STORE_DESCRIPTOR_IDENTIFIER);
+            if (node === undefined) {
+                throw new Error("MESSAGE_STORE_DESCRIPTOR not found");
+            }
+            const heap = yield (0, PHUtil_1.getHeapFrom)(node.getSubNode());
+            const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, this._resolver);
+            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield pc.list());
+            return new PSTMessageStore_class_1.PSTMessageStore(this.getRootProvider(), node, node.getSubNode(), propertyFinder);
+        });
+    }
+    getFolderOf(node) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const heap = yield (0, PHUtil_1.getHeapFrom)(node.getSubNode());
+            const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, this._resolver);
+            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield pc.list());
+            const output = new PSTFolder_class_1.PSTFolder(this.getRootProvider(), node, node.getSubNode(), propertyFinder);
+            return output;
+        });
+    }
+    getItemOf(node, subNode, propertyFinder) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield PSTUtil_class_1.PSTUtil.createAppropriatePSTMessageObject(this.getRootProvider(), node, subNode, this._resolver, propertyFinder);
+        });
+    }
+    /**
+     * Get the root folder for the PST file
+     * @returns {PSTFolder}
+     * @memberof PSTFile
+     */
+    getRootFolder() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const node = this._store.getOneNodeBy(PSTFile.ROOT_FOLDER_DESCRIPTOR_IDENTIFIER);
+            if (node === undefined) {
+                throw new Error("ROOT_FOLDER_DESCRIPTOR not found");
+            }
+            return yield this.getFolderOf(node);
+        });
+    }
+    getRootProvider() {
+        return {
+            resolver: this._resolver,
+            getNameToIdMapItem: this.getNameToIdMapItem.bind(this),
+            getItemOf: this.getItemOf.bind(this),
+            getFolderOf: this.getFolderOf.bind(this),
+        };
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTFile
+     */
+    toJSON() {
+        return this;
+    }
+}
+exports.PSTFile = PSTFile;
+/**
+ * @internal
+ */
+PSTFile.ENCRYPTION_TYPE_NONE = 0;
+/**
+ * @internal
+ */
+PSTFile.ENCRYPTION_TYPE_COMPRESSIBLE = 1;
+PSTFile.MESSAGE_STORE_DESCRIPTOR_IDENTIFIER = 33;
+PSTFile.ROOT_FOLDER_DESCRIPTOR_IDENTIFIER = 290;
+/**
+ * @internal
+ */
+PSTFile.PST_TYPE_ANSI = 14;
+/**
+ * @internal
+ */
+PSTFile.PST_TYPE_ANSI_2 = 15;
+/**
+ * @internal
+ */
+PSTFile.PST_TYPE_UNICODE = 23;
+/**
+ * @internal
+ */
+PSTFile.PST_TYPE_2013_UNICODE = 36;
+/**
+ * @internal
+ */
+PSTFile.PS_PUBLIC_STRINGS = 0;
+/**
+ * @internal
+ */
+PSTFile.PS_INTERNET_HEADERS = 3;
+/**
+ * @internal
+ */
+PSTFile.PSETID_Messaging = 7;
+/**
+ * @internal
+ */
+PSTFile.PSETID_Note = 8;
+/**
+ * @internal
+ */
+PSTFile.PSETID_PostRss = 9;
+/**
+ * @internal
+ */
+PSTFile.PSETID_Task = 10;
+/**
+ * @internal
+ */
+PSTFile.PSETID_UnifiedMessaging = 11;
+/**
+ * @internal
+ */
+PSTFile.PS_MAPI = 12;
+/**
+ * @internal
+ */
+PSTFile.PSETID_AirSync = 13;
+/**
+ * @internal
+ */
+PSTFile.PSETID_Sharing = 14;
+// node tree maps
+PSTFile.nodeMap = new NodeMap_class_1.NodeMap();
+
+
+/***/ }),
+
+/***/ 2752:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTFolder = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTObject_class_1 = __webpack_require__(7272);
+const PSTUtil_class_1 = __webpack_require__(6621);
+const PAUtil_1 = __webpack_require__(4087);
+const TableContextUtil_1 = __webpack_require__(4723);
+const PHUtil_1 = __webpack_require__(702);
+const CollectionAsyncProvider_1 = __webpack_require__(6868);
+const SingleAsyncProvider_1 = __webpack_require__(2248);
+const PropertyContextUtil_1 = __webpack_require__(1662);
+/**
+ * Represents a folder in the PST File.  Allows you to access child folders or items.
+ * Items are accessed through a sort of cursor arrangement.  This allows for
+ * incremental reading of a folder which may have _lots_ of emails.
+ * @export
+ * @class PSTFolder
+ * @extends {PSTObject}
+ */
+class PSTFolder extends PSTObject_class_1.PSTObject {
+    /**
+     * Creates an instance of PSTFolder.
+     * Represents a folder in the PST File.  Allows you to access child folders or items.
+     * Items are accessed through a sort of cursor arrangement.  This allows for
+     * incremental reading of a folder which may have _lots_ of emails.
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} descriptorIndexNode
+     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
+     * @memberof PSTFolder
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+        this._subFoldersProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
+        this._emailsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
+    }
+    getEmailsProvider() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this._emailsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
+                const targets = [];
+                if (this.getNodeType() === PSTUtil_class_1.PSTUtil.NID_TYPE_SEARCH_FOLDER) {
+                    // some folder types don't have children:
+                }
+                else {
+                    // trying to read emailsTable PSTTable7C
+                    const contentsTableNode = this._node.getSiblingNode(PSTUtil_class_1.PSTUtil.NID_TYPE_CONTENTS_TABLE);
+                    let doFallback = true;
+                    if (contentsTableNode !== undefined) {
+                        try {
+                            const contentsTableNodeReader = contentsTableNode.getSubNode();
+                            const heap = yield (0, PHUtil_1.getHeapFrom)(contentsTableNodeReader);
+                            const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
+                            const rows = yield tc.rows();
+                            const orderOfNodes = [];
+                            for (let row of rows) {
+                                const props = (0, PAUtil_1.createPropertyFinder)(yield row.list());
+                                const prop = props.findByKey(0x67f2);
+                                if (prop !== undefined && typeof prop.value === 'number') {
+                                    orderOfNodes.push({ nodeId: prop.value, propertyFinder: props });
+                                }
+                            }
+                            const childNodeIdMap = new Map(this._node.getChildren()
+                                .map(node => [node.nodeId, node]));
+                            for (let { nodeId, propertyFinder } of orderOfNodes) {
+                                const found = childNodeIdMap.get(nodeId);
+                                if (found !== undefined) {
+                                    targets.push({
+                                        node: found,
+                                        propertyFinder: propertyFinder,
+                                    });
+                                }
+                            }
+                            doFallback = false;
+                        }
+                        catch (ex) {
+                            // console.error(ex);
+                            // There are some unknown cases that TC of email list is broken.
+                            // Especially on ost file.
+                            // Thus fallback is still required.
+                            // .../Folder#0 // Error: getTableContext.list(rowIndex=0) resolving property key=0x001a type=0x001f of subNode of nodeId=32974,nidType=14 failure --> Error: heap=0x11604460 of subNode of nodeId=32974,nidType=14 not found
+                            // In this case, Outlook 2003 will try to recover the broken TC of that folder with a kind of fallback mode.
+                        }
+                    }
+                    if (doFallback) {
+                        //console.log("fallback");
+                        // fallback to children as listed in the descriptor b-tree
+                        targets.length = 0;
+                        for (let node of this._node.getChildren()) {
+                            if (this.getNodeType(node.nodeId) === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_MESSAGE) {
+                                targets.push({ node, propertyFinder: undefined });
+                            }
+                        }
+                    }
+                }
+                return new CollectionAsyncProvider_1.CollectionAsyncProvider(targets.length, (index) => __awaiter(this, void 0, void 0, function* () {
+                    if (!(index in targets)) {
+                        throw new RangeError(`email index ${index} out of range. maximum index is ${targets.length - 1}.`);
+                    }
+                    return yield this._rootProvider.getItemOf(targets[index].node, targets[index].node.getSubNode(), undefined // targets[index].propertyFinder
+                    );
+                    // Some important properties are not provided thru table context, like:
+                    //
+                    // - msg.senderName
+                    // - msg.sentRepresentingEmailAddress
+                    // - appt.localeId
+                    // - contact.initials
+                    // - activity.bodyPrefix
+                    // 
+                    // Thus we need to load full set of properties
+                    // from property context of corresponding sub node.
+                }));
+            }));
+        });
+    }
+    getSubFoldersProvider() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this._subFoldersProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const targets = [];
+                    for (let node of this._node.getChildren()) {
+                        const nodeType = this.getNodeType(node.nodeId);
+                        if ( false
+                            || nodeType === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_FOLDER) {
+                            targets.push(node);
+                        }
+                    }
+                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(targets.length, (index) => __awaiter(this, void 0, void 0, function* () {
+                        if (!(index in targets)) {
+                            throw new RangeError(`folder index ${index} out of range. maximum index is ${targets.length - 1}.`);
+                        }
+                        return yield this._rootProvider.getFolderOf(targets[index]);
+                    }));
+                }
+                catch (err) {
+                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
+                        this.displayName +
+                        '\n' +
+                        err);
+                    throw err;
+                }
+            }));
+        });
+    }
+    /**
+     * Get folders in one fell swoop, since there's not usually thousands of them.
+     * @returns {PSTFolder[]}
+     * @memberof PSTFolder
+     */
+    getSubFolders() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield (yield this.getSubFoldersProvider()).all();
+        });
+    }
+    getSubFolder(index) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield (yield this.getSubFoldersProvider()).get(index);
+        });
+    }
+    /**
+     * The number of child folders in this folder
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    getSubFolderCount() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getSubFoldersProvider()).count;
+        });
+    }
+    /**
+     * Number of emails in this folder
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    getEmailCount() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getEmailsProvider()).count;
+        });
+    }
+    getEmail(index) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield (yield this.getEmailsProvider()).get(index));
+        });
+    }
+    getEmails() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield (yield this.getEmailsProvider()).all());
+        });
+    }
+    getFasterEmailList(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const list = [];
+            if (this.getNodeType() === PSTUtil_class_1.PSTUtil.NID_TYPE_SEARCH_FOLDER) {
+                // ignore
+            }
+            else {
+                const rootProvider = this._rootProvider;
+                const innerResolver = {
+                    resolveValueOf(key, type, value, heap) {
+                        return __awaiter(this, void 0, void 0, function* () {
+                            if ( false
+                                || key === OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME
+                                || key === OutlookProperties_1.OutlookProperties.PR_SUBJECT
+                                || key === OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS) {
+                                return rootProvider.resolver.resolveValueOf(key, type, value, heap);
+                            }
+                            return undefined;
+                        });
+                    },
+                };
+                const nodes = this._node.getChildren();
+                const progress = (options === null || options === void 0 ? void 0 : options.progress) || ((_, __) => { });
+                const count = nodes.length;
+                let index = -1;
+                for (let node of nodes) {
+                    progress(++index, count);
+                    if (this.getNodeType(node.nodeId) === PSTUtil_class_1.PSTUtil.NID_TYPE_NORMAL_MESSAGE) {
+                        const subNode = node.getSubNode();
+                        const heap = yield (0, PHUtil_1.getHeapFrom)(subNode);
+                        const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, innerResolver);
+                        const propList = yield pc.list();
+                        function getValueOfAny(keys) {
+                            var _a;
+                            return `${(_a = propList.filter(it => keys.indexOf(it.key) !== -1)[0]) === null || _a === void 0 ? void 0 : _a.value}`;
+                        }
+                        list.push({
+                            displayName: getValueOfAny([OutlookProperties_1.OutlookProperties.PR_SUBJECT, OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME]),
+                            messageClass: getValueOfAny([OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS]),
+                            getMessage() {
+                                return __awaiter(this, void 0, void 0, function* () {
+                                    return yield rootProvider.getItemOf(node, node.getSubNode(), undefined);
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            return list;
+        });
+    }
+    /**
+     * Contains a constant that indicates the folder type.
+     * https://msdn.microsoft.com/en-us/library/office/cc815373.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    get folderType() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_FOLDER_TYPE);
+    }
+    /**
+     * Contains the number of messages in a folder, as computed by the message store.
+     * For a number calculated by the library use getEmailCount
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    get contentCount() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTENT_COUNT);
+    }
+    /**
+     * Contains the number of unread messages in a folder, as computed by the message store.
+     * https://msdn.microsoft.com/en-us/library/office/cc841964.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    get unreadCount() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTENT_UNREAD);
+    }
+    /**
+     * Contains TRUE if a folder contains subfolders.
+     * once again, read from the PST, use getSubFolderCount if you want to know
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTFolder
+     */
+    get hasSubfolders() {
+        return  false
+            || this.getBooleanItem(OutlookProperties_1.OutlookProperties.PR_SUBFOLDERS)
+            || this.getIntItem(OutlookProperties_1.OutlookProperties.PR_SUBFOLDERS) != 0;
+    }
+    /**
+     * Contains a text string describing the type of a folder. Although this property is
+     * generally ignored, versions of Microsoft® Exchange Server prior to Exchange Server
+     * 2003 Mailbox Manager expect this property to be present.
+     * https://msdn.microsoft.com/en-us/library/office/cc839839.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTFolder
+     */
+    get containerClass() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CONTAINER_CLASS);
+    }
+    /**
+     * Contains a bitmask of flags describing capabilities of an address book container.
+     * https://msdn.microsoft.com/en-us/library/office/cc839610.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTFolder
+     */
+    get containerFlags() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_CONTAINER_FLAGS);
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTFolder
+     */
+    toJSON() {
+        const clone = Object.assign({
+            folderType: this.folderType,
+            contentCount: this.contentCount,
+            unreadCount: this.unreadCount,
+            hasSubfolders: this.hasSubfolders,
+            containerClass: this.containerClass,
+            containerFlags: this.containerFlags,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTFolder = PSTFolder;
+
+
+/***/ }),
+
+/***/ 1973:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTMessage = void 0;
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTFile_class_1 = __webpack_require__(3619);
+const PSTObject_class_1 = __webpack_require__(7272);
+const PSTUtil_class_1 = __webpack_require__(6621);
+const LZFu_class_1 = __webpack_require__(378);
+const PSTAttachment_class_1 = __webpack_require__(9983);
+const PSTRecipient_class_1 = __webpack_require__(1140);
+const PAUtil_1 = __webpack_require__(4087);
+const PHUtil_1 = __webpack_require__(702);
+const TableContextUtil_1 = __webpack_require__(4723);
+const PropertyContextUtil_1 = __webpack_require__(1662);
+const SingleAsyncProvider_1 = __webpack_require__(2248);
+const CollectionAsyncProvider_1 = __webpack_require__(6868);
+var PidTagMessageFlags;
+(function (PidTagMessageFlags) {
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_READ"] = 1] = "MSGFLAG_READ";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_UNMODIFIED"] = 2] = "MSGFLAG_UNMODIFIED";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_SUBMIT"] = 4] = "MSGFLAG_SUBMIT";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_UNSENT"] = 8] = "MSGFLAG_UNSENT";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_HASATTACH"] = 16] = "MSGFLAG_HASATTACH";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_FROMME"] = 32] = "MSGFLAG_FROMME";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_ASSOCIATED"] = 64] = "MSGFLAG_ASSOCIATED";
+    PidTagMessageFlags[PidTagMessageFlags["MSGFLAG_RESEND"] = 128] = "MSGFLAG_RESEND";
+})(PidTagMessageFlags || (PidTagMessageFlags = {}));
+class PSTMessage extends PSTObject_class_1.PSTObject {
+    /**
+     * Creates an instance of PSTMessage. PST Message contains functions that are common across most MAPI objects.
+     * Note that many of these functions may not be applicable for the item in question,
+     * however there seems to be no hard and fast outline for what properties apply to which
+     * objects. For properties where no value is set, a blank value is returned (rather than
+     * an exception being raised).
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} descriptorIndexNode
+     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
+     * @memberof PSTMessage
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+        this._attachmentsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
+        this._recipientsProvider = new SingleAsyncProvider_1.SingleAsyncProvider();
+    }
+    /*
+          PidTagMessageFlags
+          https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+      */
+    /**
+     * The message is marked as having been read.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isRead() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_READ) !=
+            0);
+    }
+    /**
+     * The outgoing message has not been modified since the first time that it was saved; the incoming message has not been modified since it was delivered.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isUnmodified() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_UNMODIFIED) !=
+            0);
+    }
+    /**
+     * The message is marked for sending as a result of a call to the RopSubmitMessage ROP
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isSubmitted() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_SUBMIT) !=
+            0);
+    }
+    /**
+     * The message is still being composed. It is saved, but has not been sent.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isUnsent() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_UNSENT) !=
+            0);
+    }
+    /**
+     * The message has at least one attachment.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get hasAttachments() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_HASATTACH) !=
+            0);
+    }
+    /**
+     * The user receiving the message was also the user who sent the message.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isFromMe() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_FROMME) !=
+            0);
+    }
+    /**
+     * The message is an FAI message.  An FAI Message object is used to store a variety of settings and
+     * auxiliary data, including forms, views, calendar options, favorites, and category lists.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isAssociated() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_ASSOCIATED) !=
+            0);
+    }
+    /**
+     * The message includes a request for a resend operation with a nondelivery report.
+     * https://msdn.microsoft.com/en-us/library/ee160304(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isResent() {
+        return ((this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_FLAGS) &
+            PidTagMessageFlags.MSGFLAG_RESEND) !=
+            0);
+    }
+    //#region Recipients
+    //#endregion
+    /**
+     * Get the recipients table.
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    getNumberOfRecipients() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getRecipientsProvider()).count;
+        });
+    }
+    /**
+     * Get specific recipient.
+     * @param {number} recipientNumber
+     * @returns {PSTRecipient}
+     * @memberof PSTMessage
+     */
+    getRecipient(recipientNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getRecipientsProvider()).get(recipientNumber);
+        });
+    }
+    getRecipients() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getRecipientsProvider()).all();
+        });
+    }
+    getRecipientsProvider() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this._recipientsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const subNode = this._node.getSubNode();
+                    const childNode = yield subNode.getChildBy(0x692);
+                    if (childNode !== undefined) {
+                        const heap = yield (0, PHUtil_1.getHeapFrom)(childNode);
+                        const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
+                        const rows = yield tc.rows();
+                        return new CollectionAsyncProvider_1.CollectionAsyncProvider(rows.length, (index) => __awaiter(this, void 0, void 0, function* () {
+                            if (!(index in rows)) {
+                                throw new RangeError(`recipient index ${index} out of range. maximum index is ${rows.length - 1}.`);
+                            }
+                            const propertyFinder = (0, PAUtil_1.createPropertyFinder)(yield rows[index].list());
+                            return new PSTRecipient_class_1.PSTRecipient(this._rootProvider, this._node, this._subNode, propertyFinder);
+                        }));
+                    }
+                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(0, index => {
+                        throw new Error("no recipient exists");
+                    });
+                }
+                catch (err) {
+                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
+                        this.displayName +
+                        '\n' +
+                        err);
+                    throw err;
+                }
+            }));
+        });
+    }
+    /**
+     * Contains TRUE if a message sender wants notification of non-receipt for a specified recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc979208.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isNonReceiptNotificationRequested() {
+        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_NON_RECEIPT_NOTIFICATION_REQUESTED) != 0);
+    }
+    /**
+     * Contains TRUE if a message sender wants notification of non-deliver for a specified recipient.
+     * https://msdn.microsoft.com/en-us/library/ms987568(v=exchg.65).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isOriginatorNonDeliveryReportRequested() {
+        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINATOR_NON_DELIVERY_REPORT_REQUESTED) != 0);
+    }
+    /**
+     * Contains the recipient type for a message recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc839620.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get recipientType() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_TYPE);
+    }
+    /*
+          Body (plain text, RTF, HTML)
+      */
+    /**
+     * Plain text message body.
+     * https://msdn.microsoft.com/en-us/library/office/cc765874.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get body() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BODY);
+    }
+    /**
+     * Plain text body prefix.
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get bodyPrefix() {
+        return this.getStringItem(0x6619);
+    }
+    /**
+     * Contains the Rich Text Format (RTF) version of the message text, usually in compressed form.
+     * https://technet.microsoft.com/en-us/library/cc815911
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get bodyRTF() {
+        const item = this._propertyFinder.findByKey(0x1009);
+        // do we have an entry for it?
+        if ( true
+            && item !== undefined
+            && item.value instanceof ArrayBuffer
+            && item.value.byteLength >= 1) {
+            return LZFu_class_1.LZFu.decode(Buffer.from(item.value));
+        }
+        return '';
+    }
+    /**
+     * Contains the cyclical redundancy check (CRC) computed for the message text.
+     * https://technet.microsoft.com/en-us/library/cc815532(v=office.15).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get rtfSyncBodyCRC() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_CRC);
+    }
+    /**
+     * Contains a count of the significant characters of the message text.
+     * https://msdn.microsoft.com/en-us/library/windows/desktop/cc842324.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get rtfSyncBodyCount() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_COUNT);
+    }
+    /**
+     * Contains significant characters that appear at the beginning of the message text.
+     * https://technet.microsoft.com/en-us/library/cc815400(v=office.15).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get rtfSyncBodyTag() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_BODY_TAG);
+    }
+    /**
+     * Contains a count of the ignorable characters that appear before the significant characters of the message.
+     * https://msdn.microsoft.com/en-us/magazine/cc842437.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get rtfSyncPrefixCount() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_PREFIX_COUNT);
+    }
+    /**
+     * Contains a count of the ignorable characters that appear after the significant characters of the message.
+     * https://msdn.microsoft.com/en-us/magazine/cc765795.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get rtfSyncTrailingCount() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_SYNC_TRAILING_COUNT);
+    }
+    /**
+     * Contains the HTML version of the message text.
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get bodyHTML() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_BODY_HTML);
+    }
+    //#region Attachments
+    //#endregion
+    getAttachmentsProvider() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this._attachmentsProvider.getOrCreate(() => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const childNode = yield this._subNode.getChildBy(0x671);
+                    if (childNode !== undefined) {
+                        const heap = yield (0, PHUtil_1.getHeapFrom)(childNode);
+                        const tc = yield (0, TableContextUtil_1.getTableContext)(heap, this._rootProvider.resolver);
+                        const rows = yield tc.rows();
+                        return new CollectionAsyncProvider_1.CollectionAsyncProvider(rows.length, (index) => __awaiter(this, void 0, void 0, function* () {
+                            if (!(index in rows)) {
+                                throw new RangeError(`attachment index ${index} out of range. maximum index is ${rows.length - 1}.`);
+                            }
+                            // xxx1 is for properties in one row in TableContext.
+                            const list1 = yield rows[index].list();
+                            const propertyFinder1 = (0, PAUtil_1.createPropertyFinder)(list1);
+                            const ltpRowId = propertyFinder1.findByKey(0x67f2);
+                            if (ltpRowId === undefined) {
+                                throw new Error("ltpRowId not found");
+                            }
+                            if (typeof ltpRowId.value !== 'number') {
+                                throw new Error(`ltpRowId type '${typeof ltpRowId.value}' must be 'number'`);
+                            }
+                            // xxx2 is for properties in PropertyContext in dedicated subData
+                            const child2 = yield this._subNode.getChildBy(ltpRowId.value);
+                            if (child2 === undefined) {
+                                throw new Error(`ltpRowId ${ltpRowId.value} not found from ${this._subNode}`);
+                            }
+                            const heap2 = yield (0, PHUtil_1.getHeapFrom)(child2);
+                            const pc2 = yield (0, PropertyContextUtil_1.getPropertyContext)(heap2, this._rootProvider.resolver);
+                            const propertyFinder2 = (0, PAUtil_1.createPropertyFinder)(yield pc2.list());
+                            return new PSTAttachment_class_1.PSTAttachment(this._rootProvider, this._node, child2, propertyFinder2);
+                        }));
+                    }
+                    return new CollectionAsyncProvider_1.CollectionAsyncProvider(0, index => {
+                        throw new Error("no attachment exists");
+                    });
+                }
+                catch (err) {
+                    console.error("PSTFolder::getSubFolders Can't get child folders for folder " +
+                        this.displayName +
+                        '\n' +
+                        err);
+                    throw err;
+                }
+            }));
+        });
+    }
+    /**
+     * Number of attachments by counting rows in attachment table.
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    getNumberOfAttachments() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield this.getAttachmentsProvider()).count;
+        });
+    }
+    /**
+     * Get specific attachment from table using index.
+     * @param {number} attachmentNumber
+     * @returns {PSTAttachment}
+     * @memberof PSTMessage
+     */
+    getAttachment(attachmentNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield (yield this.getAttachmentsProvider()).get(attachmentNumber));
+        });
+    }
+    getAttachments() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return (yield (yield this.getAttachmentsProvider()).all());
+        });
+    }
+    //#region Miscellaneous properties
+    //#endregion
+    /**
+     * Importance of email (sender determined)
+     * https://msdn.microsoft.com/en-us/library/cc815346(v=office.12).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get importance() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_IMPORTANCE, PSTMessage.IMPORTANCE_NORMAL);
+    }
+    /**
+     * Contains a text string that identifies the sender-defined message class, such as IPM.Note.
+     * https://msdn.microsoft.com/en-us/library/office/cc765765.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get messageClass() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_CLASS);
+    }
+    /**
+     * Contains the full subject of a message.
+     * https://technet.microsoft.com/en-us/library/cc815720
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get subject() {
+        let subject = this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SUBJECT);
+        if (subject != null &&
+            subject.length >= 2 &&
+            subject.charCodeAt(0) == 0x01) {
+            if (subject.length == 2) {
+                subject = '';
+            }
+            else {
+                subject = subject.substring(2, subject.length);
+            }
+        }
+        return subject;
+    }
+    /**
+     * Contains the date and time the message sender submitted a message.
+     * https://technet.microsoft.com/en-us/library/cc839781
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get clientSubmitTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CLIENT_SUBMIT_TIME);
+    }
+    /**
+     * Contains the display name of the messaging user who receives the message.
+     * https://msdn.microsoft.com/en-us/library/office/cc840015.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get receivedByName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_NAME);
+    }
+    /**
+     * Contains the display name for the messaging user represented by the sender.
+     * https://msdn.microsoft.com/en-us/library/office/cc842405.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get sentRepresentingName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_NAME);
+    }
+    /**
+     * Contains the address type for the messaging user who is represented by the sender.
+     * https://msdn.microsoft.com/en-us/library/office/cc839677.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get sentRepresentingAddressType() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_ADDRTYPE);
+    }
+    /**
+     * Contains the e-mail address for the messaging user who is represented by the sender.
+     * https://msdn.microsoft.com/en-us/library/office/cc839552.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get sentRepresentingEmailAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_EMAIL_ADDRESS);
+    }
+    /**
+     * Contains the topic of the first message in a conversation thread.
+     * https://technet.microsoft.com/en-us/windows/cc839841
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get conversationTopic() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_CONVERSATION_TOPIC);
+    }
+    /**
+     * Contains the e-mail address type, such as SMTP, for the messaging user who actually receives the message.
+     * https://technet.microsoft.com/en-us/library/cc765641(v=office.14)
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get receivedByAddressType() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_ADDRTYPE);
+    }
+    /**
+     * Contains the e-mail address for the messaging user who receives the message.
+     * https://technet.microsoft.com/en-us/library/cc839550(v=office.14)
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get receivedByAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RECEIVED_BY_EMAIL_ADDRESS);
+    }
+    /**
+     * Contains transport-specific message envelope information.
+     * https://technet.microsoft.com/en-us/library/cc815628
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get transportMessageHeaders() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_TRANSPORT_MESSAGE_HEADERS);
+    }
+    // Acknowledgment mode Integer 32-bit signed
+    get acknowledgementMode() {
+        return this.getIntItem(0x0001);
+    }
+    /**
+     * Contains TRUE if a message sender requests a delivery report for a particular recipient from the messaging system before the message is placed in the message store.
+     * https://msdn.microsoft.com/en-us/library/office/cc765845.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get originatorDeliveryReportRequested() {
+        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINATOR_DELIVERY_REPORT_REQUESTED) != 0);
+    }
+    /**
+     * Contains the relative priority of a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc765646.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get priority() {
+        return this.getIntItem(0x0026);
+    }
+    /**
+     * Contains TRUE if a message sender wants the messaging system to generate a read report when the recipient has read a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc842094.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get readReceiptRequested() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_READ_RECEIPT_REQUESTED) != 0;
+    }
+    /**
+     * Specifies whether adding additional recipients, when forwarding the message, is prohibited for the e-mail message.
+     * https://msdn.microsoft.com/en-us/library/office/cc979216.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get recipientReassignmentProhibited() {
+        return (this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_REASSIGNMENT_PROHIBITED) !=
+            0);
+    }
+    /**
+     * Contains the sensitivity value assigned by the sender of the first version of a message that is, the message before being forwarded or replied to.
+     * https://msdn.microsoft.com/en-us/library/cc839694(office.12).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get originalSensitivity() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_SENSITIVITY);
+    }
+    /**
+     * Contains a value that indicates the message sender's opinion of the sensitivity of a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc839518.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get sensitivity() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_SENSITIVITY);
+    }
+    /**
+     * Contains the search key for the messaging user represented by the sender.
+     * https://msdn.microsoft.com/en-us/magazine/cc842068.aspx
+     * @readonly
+     * @type {Buffer}
+     * @memberof PSTMessage
+     */
+    get pidTagSentRepresentingSearchKey() {
+        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PR_SENT_REPRESENTING_SEARCH_KEY);
+    }
+    /**
+     * Contains the display name for the messaging user who is represented by the receiving user.
+     * https://technet.microsoft.com/en-us/library/cc842260.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get rcvdRepresentingName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_NAME);
+    }
+    /**
+     * Contains the subject of an original message for use in a report about the message.
+     * https://msdn.microsoft.com/en-us/library/office/cc842182.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get originalSubject() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_SUBJECT);
+    }
+    /**
+     * Contains a list of display names for recipients that are to get a reply.
+     * https://msdn.microsoft.com/en-us/library/windows/desktop/cc815850.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get replyRecipientNames() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_REPLY_RECIPIENT_NAMES);
+    }
+    /**
+     * Contains TRUE if this messaging user is specifically named as a primary (To) recipient of this message and is not part of a distribution list.
+     * https://technet.microsoft.com/en-us/library/cc815755
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get messageToMe() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_TO_ME) != 0;
+    }
+    /**
+     * Contains TRUE if this messaging user is specifically named as a carbon copy (CC) recipient of this message and is not part of a distribution list.
+     * https://msdn.microsoft.com/en-us/library/office/cc839713.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get messageCcMe() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_CC_ME) != 0;
+    }
+    /**
+     * Contains TRUE if this messaging user is specifically named as a primary (To), carbon copy (CC), or blind carbon copy (BCC) recipient of this message and is not part of a distribution list.
+     * https://msdn.microsoft.com/en-us/library/office/cc842268.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get messageRecipMe() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_RECIP_ME) != 0;
+    }
+    /**
+     * Contains TRUE if the message sender wants a response to a meeting request.
+     * https://msdn.microsoft.com/en-us/library/office/cc839921.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get responseRequested() {
+        return this.getBooleanItem(OutlookProperties_1.OutlookProperties.PR_RESPONSE_REQUESTED);
+    }
+    /**
+     * Contains the display names of any carbon copy (CC) recipients of the original message.
+     * https://msdn.microsoft.com/en-us/magazine/cc815841(v=office.14).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get originalDisplayBcc() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_BCC);
+    }
+    /**
+     * Contains the display names of any carbon copy (CC) recipients of the original message.
+     * https://msdn.microsoft.com/en-us/magazine/cc815841(v=office.14).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get originalDisplayCc() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_CC);
+    }
+    /**
+     * Contains the display names of the primary (To) recipients of the original message.
+     * https://msdn.microsoft.com/en-us/magazine/cc842235(v=office.14).aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get originalDisplayTo() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ORIGINAL_DISPLAY_TO);
+    }
+    /**
+     * Contains the address type for the messaging user who is represented by the user actually receiving the message.
+     * https://msdn.microsoft.com/en-us/library/office/cc842447.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get rcvdRepresentingAddrtype() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_ADDRTYPE);
+    }
+    /**
+     * Contains the e-mail address for the messaging user who is represented by the receiving user.
+     * https://msdn.microsoft.com/en-us/library/office/cc815875.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get rcvdRepresentingEmailAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_RCVD_REPRESENTING_EMAIL_ADDRESS);
+    }
+    /**
+     * Contains TRUE if a message sender requests a reply from a recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc815286.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isReplyRequested() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_REPLY_REQUESTED) != 0;
+    }
+    /**
+     * Contains the message sender's entry identifier.
+     * https://msdn.microsoft.com/en-us/library/office/cc815625.aspx
+     * @readonly
+     * @type {Buffer}
+     * @memberof PSTMessage
+     */
+    get senderEntryId() {
+        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PR_SENDER_ENTRYID);
+    }
+    /**
+     * Contains the message sender's display name.
+     * https://msdn.microsoft.com/en-us/library/office/cc815457.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get senderName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_NAME);
+    }
+    /**
+     * Contains the message sender's e-mail address type.
+     * https://msdn.microsoft.com/en-us/library/office/cc815748.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get senderAddrtype() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_ADDRTYPE);
+    }
+    /**
+     * Contains the message sender's e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc839670.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get senderEmailAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SENDER_EMAIL_ADDRESS);
+    }
+    /**
+     * Contains the sum, in bytes, of the sizes of all properties on a message object
+     * https://technet.microsoft.com/en-us/library/cc842471
+     * @readonly
+     * @type {long}
+     * @memberof PSTMessage
+     */
+    get messageSize() {
+        return this.getLongItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_SIZE);
+    }
+    /**
+     * A number associated with an item in a message store.
+     * https://msdn.microsoft.com/en-us/library/office/cc815718.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get internetArticleNumber() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_ARTICLE_NUMBER);
+    }
+    /**
+     * Contains a string that names the first server that is used to send the message.
+     * https://msdn.microsoft.com/en-us/library/office/cc815413.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get primarySendAccount() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_PRIMARY_SEND_ACCOUNT);
+    }
+    /**
+     * Specifies the server that a client is currently attempting to use to send e-mail.
+     * https://technet.microsoft.com/en-us/library/cc842327(v=office.14)
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get nextSendAcct() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_NEXT_SEND_ACCT);
+    }
+    /**
+     * Contains the type of an object.
+     * https://msdn.microsoft.com/en-us/library/office/cc815487.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get objectType() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_OBJECT_TYPE);
+    }
+    /**
+     * Contains TRUE if a client application wants MAPI to delete the associated message after submission.
+     * https://msdn.microsoft.com/en-us/library/office/cc842353.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get deleteAfterSubmit() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_DELETE_AFTER_SUBMIT) != 0;
+    }
+    /**
+     * Contains TRUE if some transport provider has already accepted responsibility for delivering the message to this recipient, and FALSE if the MAPI spooler considers that this transport provider should accept responsibility.
+     * https://msdn.microsoft.com/en-us/library/office/cc765767.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get responsibility() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RESPONSIBILITY) != 0;
+    }
+    /**
+     * Contains TRUE if the PR_RTF_COMPRESSED (PidTagRtfCompressed) property has the same text content as the PR_BODY (PidTagBody) property for this message.
+     * https://msdn.microsoft.com/en-us/library/office/cc765844.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isRTFInSync() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RTF_IN_SYNC) != 0;
+    }
+    /**
+     * Contains an ASCII list of the display names of any blind carbon copy (BCC) message recipients, separated by semicolons (;).
+     * https://msdn.microsoft.com/en-us/library/office/cc815730.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get displayBCC() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_BCC);
+    }
+    /**
+     * Contains an ASCII list of the display names of any carbon copy (CC) message recipients, separated by semicolons (;).
+     * https://msdn.microsoft.com/en-us/library/office/cc765528.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get displayCC() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_CC);
+    }
+    /**
+     * Contains a list of the display names of the primary (To) message recipients, separated by semicolons (;).
+     * https://msdn.microsoft.com/en-us/library/office/cc839687.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get displayTo() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_TO);
+    }
+    /**
+     * Contains the date and time when a message was delivered.
+     * https://msdn.microsoft.com/en-us/library/office/cc841961.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get messageDeliveryTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_MESSAGE_DELIVERY_TIME);
+    }
+    /**
+     * Corresponds to the message ID field as specified in [RFC2822].
+     * https://msdn.microsoft.com/en-us/library/office/cc839521.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get internetMessageId() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_MESSAGE_ID);
+    }
+    /**
+     * Contains the original message's PR_INTERNET_MESSAGE_ID (PidTagInternetMessageId) property value.
+     * https://msdn.microsoft.com/en-us/library/office/cc839776.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get inReplyToId() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_IN_REPLY_TO_ID);
+    }
+    /**
+     * Contains the value of a Multipurpose Internet Mail Extensions (MIME) message's Return-Path header field. The e-mail address of the message's sender.
+     * https://msdn.microsoft.com/en-us/library/office/cc765856.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get returnPath() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_INTERNET_RETURN_PATH);
+    }
+    /**
+     * Contains a number that indicates which icon to use when you display a group of e-mail objects.
+     * https://msdn.microsoft.com/en-us/library/office/cc815472.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get iconIndex() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ICON_INDEX);
+    }
+    /**
+     * Contains the last verb executed.
+     * Todo: Helper methods for each flag.
+     * https://msdn.microsoft.com/en-us/library/office/cc841968.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get lastVerbExecuted() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_LAST_VERB_EXECUTED);
+    }
+    /**
+     * Contains the time when the last verb was executed.
+     * https://msdn.microsoft.com/en-us/library/office/cc839918.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get lastVerbExecutionTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_VERB_EXECUTION_TIME);
+    }
+    /**
+     * The URL component name for a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc815653.aspx
+     * @readonly
+     * @type {String}
+     * @memberof PSTMessage
+     */
+    get urlCompName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_URL_COMP_NAME);
+    }
+    /**
+     * Specifies the hide or show status of a folder.
+     * https://msdn.microsoft.com/en-us/library/ee159038(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get attrHidden() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_ATTR_HIDDEN) != 0;
+    }
+    /**
+     * Specifies the date on which the user expects work on the task to begin.
+     * https://technet.microsoft.com/en-us/library/cc815922(v=office.12).aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get taskStartDate() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskStartDate, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Represents the date when the user expects to complete the task.
+     * https://technet.microsoft.com/en-us/library/cc839641(v=office.12).aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get taskDueDate() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDueDate, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Specifies whether a reminder is set on the object.
+     * https://msdn.microsoft.com/en-us/library/office/cc765589.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get reminderSet() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidReminderSet, OutlookProperties_1.OutlookProperties.PSETID_Common));
+    }
+    /**
+     * Specifies the interval, in minutes, between the time when the reminder first becomes overdue and the start time of the calendar object.
+     * https://msdn.microsoft.com/en-us/library/office/cc765535.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get reminderDelta() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidReminderDelta, OutlookProperties_1.OutlookProperties.PSETID_Common));
+    }
+    /**
+     * Color categories
+     * @readonly
+     * @type {string[]}
+     * @memberof PSTMessage
+     */
+    get colorCategories() {
+        const keywordCategory = PSTFile_class_1.PSTFile.getPublicStringToIdMapItem('Keywords');
+        const categories = [];
+        const item = this._propertyFinder.findByKey(keywordCategory);
+        if ( true
+            && item !== undefined
+            && item.value instanceof ArrayBuffer) {
+            const data = item.value;
+            try {
+                if (data.byteLength !== 0) {
+                    const view = new DataView(data);
+                    const dataBuffer = Buffer.from(data);
+                    const categoryCount = view.getUint8(0);
+                    if (categoryCount > 0) {
+                        const categories = [];
+                        const offsets = [];
+                        for (let x = 0; x < categoryCount; x++) {
+                            offsets[x] = view.getUint32(x * 4 + 1, true);
+                        }
+                        for (let x = 0; x < offsets.length - 1; x++) {
+                            const start = offsets[x];
+                            const end = offsets[x + 1];
+                            const length = end - start;
+                            const buf = Buffer.alloc(length);
+                            PSTUtil_class_1.PSTUtil.arraycopy(dataBuffer, start, buf, 0, length);
+                            const name = Buffer.from(buf).toString();
+                            categories[x] = name;
+                        }
+                        const start = offsets[offsets.length - 1];
+                        const end = data.byteLength;
+                        const length = end - start;
+                        const buf = Buffer.alloc(length);
+                        PSTUtil_class_1.PSTUtil.arraycopy(dataBuffer, start, buf, 0, length);
+                        const name = Buffer.from(buf).toString();
+                        categories[categories.length - 1] = name;
+                    }
+                }
+            }
+            catch (err) {
+                console.error('PSTMessage::colorCategories Unable to decode category data\n' + err);
+                throw err;
+            }
+        }
+        return categories;
+    }
+    /**
+     * Contains a computed value derived from other conversation-related properties.
+     * https://msdn.microsoft.com/en-us/library/ee204279(v=exchg.80).aspx
+     * @readonly
+     * @type {Buffer}
+     * @memberof PSTMessage
+     */
+    get conversationId() {
+        return this.getBinaryItem(OutlookProperties_1.OutlookProperties.PidTagConversationId);
+    }
+    /**
+     * Indicates whether the GUID portion of the PidTagConversationIndex property (section 2.641) is to be used to compute the PidTagConversationId property (section 2.640).
+     * https://msdn.microsoft.com/en-us/library/ee218393(v=exchg.80).aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTMessage
+     */
+    get isConversationIndexTracking() {
+        return this.getBooleanItem(OutlookProperties_1.OutlookProperties.PidTagConversationIndexTracking, false);
+    }
+    /**
+     * Contains the messaging user's e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842372.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get emailAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_EMAIL_ADDRESS);
+    }
+    /**
+     * Contains the messaging user's e-mail address type, such as SMTP.
+     * https://msdn.microsoft.com/en-us/library/office/cc815548.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get addrType() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ADDRTYPE);
+    }
+    /**
+     * Contains a comment about the purpose or content of an object.
+     * https://msdn.microsoft.com/en-us/library/office/cc842022.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get comment() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_COMMENT);
+    }
+    /**
+     * Contains the creation date and time of a message.
+     * https://msdn.microsoft.com/en-us/library/office/cc765677.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get creationTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_CREATION_TIME);
+    }
+    /**
+     * Contains the date and time when the object or subobject was last modified.
+     * https://msdn.microsoft.com/en-us/library/office/cc815689.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTMessage
+     */
+    get modificationTime() {
+        return this.getDateItem(OutlookProperties_1.OutlookProperties.PR_LAST_MODIFICATION_TIME);
+    }
+    /**
+     * JSON stringify the object properties.  Large fields (like body) aren't included.
+     * @returns {string}
+     * @memberof PSTMessage
+     */
+    toJSON() {
+        const clone = Object.assign({
+            messageClass: this.messageClass,
+            emailAddress: this.emailAddress,
+            subject: this.subject,
+            addrType: this.addrType,
+            comment: this.comment,
+            creationTime: this.creationTime,
+            modificationTime: this.modificationTime,
+            importance: this.importance,
+            transportMessageHeaders: this.transportMessageHeaders,
+            clientSubmitTime: this.clientSubmitTime,
+            receivedByName: this.receivedByName,
+            sentRepresentingName: this.sentRepresentingName,
+            sentRepresentingAddressType: this.sentRepresentingAddressType,
+            sentRepresentingEmailAddress: this.sentRepresentingEmailAddress,
+            conversationTopic: this.conversationTopic,
+            receivedByAddressType: this.receivedByAddressType,
+            receivedByAddress: this.receivedByAddress,
+            isRead: this.isRead,
+            isUnmodified: this.isUnmodified,
+            isSubmitted: this.isSubmitted,
+            isUnsent: this.isUnsent,
+            hasAttachments: this.hasAttachments,
+            isFromMe: this.isFromMe,
+            isAssociated: this.isAssociated,
+            isResent: this.isResent,
+            acknowledgementMode: this.acknowledgementMode,
+            originatorDeliveryReportRequested: this
+                .originatorDeliveryReportRequested,
+            readReceiptRequested: this.readReceiptRequested,
+            recipientReassignmentProhibited: this.recipientReassignmentProhibited,
+            originalSensitivity: this.originalSensitivity,
+            sensitivity: this.sensitivity,
+            rcvdRepresentingName: this.rcvdRepresentingName,
+            bloriginalSubjectah: this.originalSubject,
+            replyRecipientNames: this.replyRecipientNames,
+            messageToMe: this.messageToMe,
+            messageCcMe: this.messageCcMe,
+            messageRecipMe: this.messageRecipMe,
+            responseRequested: this.responseRequested,
+            originalDisplayBcc: this.originalDisplayBcc,
+            originalDisplayCc: this.originalDisplayCc,
+            originalDisplayTo: this.originalDisplayTo,
+            rcvdRepresentingAddrtype: this.rcvdRepresentingAddrtype,
+            rcvdRepresentingEmailAddress: this.rcvdRepresentingEmailAddress,
+            isNonReceiptNotificationRequested: this
+                .isNonReceiptNotificationRequested,
+            isOriginatorNonDeliveryReportRequested: this
+                .isOriginatorNonDeliveryReportRequested,
+            recipientType: this.recipientType,
+            isReplyRequested: this.isReplyRequested,
+            senderName: this.senderName,
+            senderAddrtype: this.senderAddrtype,
+            senderEmailAddress: this.senderEmailAddress,
+            messageSize: this.messageSize,
+            internetArticleNumber: this.internetArticleNumber,
+            primarySendAccount: this.primarySendAccount,
+            nextSendAcct: this.nextSendAcct,
+            objectType: this.objectType,
+            deleteAfterSubmit: this.deleteAfterSubmit,
+            responsibility: this.responsibility,
+            isRTFInSync: this.isRTFInSync,
+            displayBCC: this.displayBCC,
+            displayCC: this.displayCC,
+            displayTo: this.displayTo,
+            messageDeliveryTime: this.messageDeliveryTime,
+            bodyPrefix: this.bodyPrefix,
+            rtfSyncBodyCRC: this.rtfSyncBodyCRC,
+            rtfSyncBodyCount: this.rtfSyncBodyCount,
+            rtfSyncBodyTag: this.rtfSyncBodyTag,
+            rtfSyncPrefixCount: this.rtfSyncPrefixCount,
+            rtfSyncTrailingCount: this.rtfSyncTrailingCount,
+            internetMessageId: this.internetMessageId,
+            inReplyToId: this.inReplyToId,
+            returnPath: this.returnPath,
+            iconIndex: this.iconIndex,
+            lastVerbExecutionTime: this.lastVerbExecutionTime,
+            urlCompName: this.urlCompName,
+            attrHidden: this.attrHidden,
+            taskStartDate: this.taskStartDate,
+            taskDueDate: this.taskDueDate,
+            reminderSet: this.reminderSet,
+            reminderDelta: this.reminderDelta,
+            colorCategories: this.colorCategories,
+            conversationId: this.conversationId,
+            isConversationIndexTracking: this.isConversationIndexTracking,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTMessage = PSTMessage;
+PSTMessage.IMPORTANCE_LOW = 0;
+PSTMessage.IMPORTANCE_NORMAL = 1;
+PSTMessage.IMPORTANCE_HIGH = 2;
+PSTMessage.RECIPIENT_TYPE_TO = 1;
+PSTMessage.RECIPIENT_TYPE_CC = 2;
+
+
+/***/ }),
+
+/***/ 1275:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTMessageStore = void 0;
+const PSTObject_class_1 = __webpack_require__(7272);
+class PSTMessageStore extends PSTObject_class_1.PSTObject {
+    /**
+     * Creates an instance of PSTMessageStore.
+     * Not much use other than to get the "name" of the PST file.
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} descriptorIndexNode
+     * @memberof PSTMessageStore
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+}
+exports.PSTMessageStore = PSTMessageStore;
+
+
+/***/ }),
+
+/***/ 7272:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTObject = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const long_1 = __importDefault(__webpack_require__(1583));
+const OutlookProperties_1 = __webpack_require__(9164);
+class PSTObject {
+    /**
+     * Creates an instance of PSTObject, the root class of most PST Items.
+     * @internal
+     * @memberof PSTObject
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        if (!propertyFinder) {
+            console.trace("propertyFinder not defined");
+        }
+        this._rootProvider = rootProvider;
+        this._node = node;
+        this._subNode = subNode;
+        this._propertyFinder = propertyFinder;
+    }
+    /**
+     * Get the node type for the descriptor id.
+     * @param {number} [descriptorIdentifier]
+     * @returns {number}
+     * @memberof PSTObject
+     */
+    getNodeType(descriptorIdentifier) {
+        if (descriptorIdentifier) {
+            return descriptorIdentifier & 0x1f;
+        }
+        else if (this._node.nodeId) {
+            return this._node.nodeId & 0x1f;
+        }
+        else {
+            return -1;
+        }
+    }
+    /**
+     * @protected
+     * @param { number } identifier
+     * @param { number } [defaultValue]
+     * @returns { number }
+     * @memberof PSTObject
+     */
+    getIntItem(identifier, defaultValue) {
+        if (!defaultValue) {
+            defaultValue = 0;
+        }
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (typeof value === 'number') {
+                return value;
+            }
+        }
+        return defaultValue;
+    }
+    /**
+     * Get a boolean.
+     * @protected
+     * @param {number} identifier
+     * @param {boolean} [defaultValue]
+     * @returns {boolean}
+     * @memberof PSTObject
+     */
+    getBooleanItem(identifier, defaultValue) {
+        if (defaultValue === undefined) {
+            defaultValue = false;
+        }
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (typeof value === 'boolean') {
+                return value;
+            }
+        }
+        return defaultValue;
+    }
+    /**
+     * Get a double.
+     * @protected
+     * @param {number} identifier
+     * @param {number} [defaultValue]
+     * @returns {number}
+     * @memberof PSTObject
+     */
+    getDoubleItem(identifier, defaultValue) {
+        if (defaultValue === undefined) {
+            defaultValue = 0;
+        }
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (typeof value === 'number') {
+                return value;
+            }
+        }
+        return defaultValue;
+    }
+    /**
+     * Get a long.
+     * @protected
+     * @param {number} identifier
+     * @param {long} [defaultValue]
+     * @returns {long}
+     * @memberof PSTObject
+     */
+    getLongItem(identifier, defaultValue) {
+        if (defaultValue === undefined) {
+            defaultValue = long_1.default.ZERO;
+        }
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (value instanceof long_1.default) {
+                return value;
+            }
+            else if (typeof value === 'number') {
+                return new long_1.default(value);
+            }
+        }
+        return defaultValue;
+    }
+    /**
+     * Get a string.
+     * @protected
+     * @param {number} identifier
+     * @param {number} [stringType]
+     * @param {string} [codepage]
+     * @returns {string}
+     * @memberof PSTObject
+     */
+    getStringItem(identifier, stringType, codepage) {
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (typeof value === 'string') {
+                return value;
+            }
+        }
+        return '';
+    }
+    /**
+     * Get a date.
+     * @param {number} identifier
+     * @returns {Date}
+     * @memberof PSTObject
+     */
+    getDateItem(identifier) {
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (value instanceof Date) {
+                return value;
+            }
+        }
+        return null;
+    }
+    /**
+     * Get a blob.
+     * @protected
+     * @param {number} identifier
+     * @returns {Buffer}
+     * @memberof PSTObject
+     */
+    getBinaryItem(identifier) {
+        const property = this._propertyFinder.findByKey(identifier);
+        if (property !== undefined) {
+            const { value } = property;
+            if (value instanceof ArrayBuffer) {
+                return Buffer.from(value);
+            }
+        }
+        return null;
+    }
+    /**
+     * Get the display name of this object.
+     * https://msdn.microsoft.com/en-us/library/office/cc842383.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTObject
+     */
+    get displayName() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_DISPLAY_NAME);
+    }
+    /**
+     * Try to get specified property from PropertyContext.
+     *
+     * @param key `0x3001` is `PR_DISPLAY_NAME` for example
+     * @returns The found one will be returned. Otherwise `undefined` is returned.
+     */
+    getProperty(key) {
+        return this._propertyFinder.findByKey(key);
+    }
+    /**
+     * JSON the object.
+     * @returns {string}
+     * @memberof PSTObject
+     */
+    toJSON() {
+        return this;
+    }
+}
+exports.PSTObject = PSTObject;
+
+
+/***/ }),
+
+/***/ 1140:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTRecipient = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTObject_class_1 = __webpack_require__(7272);
+// Class containing recipient information
+class PSTRecipient extends PSTObject_class_1.PSTObject {
+    /**
+     * Creates an instance of PSTRecipient.
+     * @internal
+     * @param {Map<number, PSTTableItem>} recipientDetails
+     * @memberof PSTRecipient
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * Contains the recipient type for a message recipient.
+     * https://msdn.microsoft.com/en-us/library/office/cc839620.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTMessage
+     */
+    get recipientType() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_TYPE);
+    }
+    /**
+     * Contains the messaging user's e-mail address type, such as SMTP.
+     * https://msdn.microsoft.com/en-us/library/office/cc815548.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get addrType() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_ADDRTYPE);
+    }
+    /**
+     * Contains the messaging user's e-mail address.
+     * https://msdn.microsoft.com/en-us/library/office/cc842372.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTMessage
+     */
+    get emailAddress() {
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_EMAIL_ADDRESS);
+    }
+    /**
+     * Specifies a bit field that describes the recipient status.
+     * https://msdn.microsoft.com/en-us/library/office/cc815629.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTRecipient
+     */
+    get recipientFlags() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PR_RECIPIENT_FLAGS);
+    }
+    /**
+     * Specifies the location of the current recipient in the recipient table.
+     * https://msdn.microsoft.com/en-us/library/ee201359(v=exchg.80).aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTRecipient
+     */
+    get recipientOrder() {
+        return this.getIntItem(OutlookProperties_1.OutlookProperties.PidTagRecipientOrder);
+    }
+    /**
+     * Contains the SMTP address for the address book object.
+     * https://msdn.microsoft.com/en-us/library/office/cc842421.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTRecipient
+     */
+    get smtpAddress() {
+        // If the recipient address type is SMTP, we can simply return the recipient address.
+        const addressType = this.addrType;
+        if (addressType != null && addressType.toLowerCase() === 'smtp') {
+            const addr = this.emailAddress;
+            if (addr != null && addr.length != 0) {
+                return addr;
+            }
+        }
+        // Otherwise, we have to hope the SMTP address is present as the PidTagPrimarySmtpAddress property.
+        return this.getStringItem(OutlookProperties_1.OutlookProperties.PR_SMTP_ADDRESS);
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTRecipient
+     */
+    toJSON() {
+        const clone = Object.assign({
+            displayName: this.displayName,
+            smtpAddress: this.smtpAddress,
+            recipientType: this.recipientType,
+            addrType: this.addrType,
+            emailAddress: this.emailAddress,
+            recipientFlags: this.recipientFlags,
+            recipientOrder: this.recipientOrder,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTRecipient = PSTRecipient;
+
+
+/***/ }),
+
+/***/ 3947:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTTask = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const OutlookProperties_1 = __webpack_require__(9164);
+const PSTMessage_class_1 = __webpack_require__(1973);
+const PSTFile_class_1 = __webpack_require__(3619);
+const RecurrencePattern_class_1 = __webpack_require__(9346);
+class PSTTask extends PSTMessage_class_1.PSTMessage {
+    /**
+     * Creates an instance of PSTTask.
+     * @internal
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} descriptorIndexNode
+     * @param {Map<number, PSTDescriptorItem>} [localDescriptorItems]
+     * @memberof PSTTask
+     */
+    constructor(rootProvider, node, subNode, propertyFinder) {
+        super(rootProvider, node, subNode, propertyFinder);
+    }
+    /**
+     * Specifies the status of the user's progress on the task.
+     * https://msdn.microsoft.com/en-us/library/office/cc842120.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskStatus() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskStatus, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the progress the user has made on a task.
+     * https://msdn.microsoft.com/en-us/library/office/cc839932.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get percentComplete() {
+        return this.getDoubleItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidPercentComplete, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Specifies the date when the user completes the task.
+     * https://msdn.microsoft.com/en-us/library/office/cc815753.aspx
+     * @readonly
+     * @type {Date}
+     * @memberof PSTTask
+     */
+    get taskDateCompleted() {
+        return this.getDateItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDateCompleted, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the number of minutes that the user performed a task.
+     * https://msdn.microsoft.com/en-us/library/office/cc842253.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskActualEffort() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskActualEffort, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the amount of time, in minutes, that the user expects to perform a task.
+     * https://msdn.microsoft.com/en-us/library/office/cc842485.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskEstimatedEffort() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskEstimatedEffort, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates which copy is the latest update of a task.
+     * https://msdn.microsoft.com/en-us/library/office/cc815510.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskVersion() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskVersion, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the task is complete.
+     * https://msdn.microsoft.com/en-us/library/office/cc839514.aspx
+     * @readonly
+     * @type {boolean}
+     * @memberof PSTTask
+     */
+    get isTaskComplete() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskComplete, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Contains the name of the task owner.
+     * https://msdn.microsoft.com/en-us/library/office/cc842363.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTTask
+     */
+    get taskOwner() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOwner, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Names the user who was last assigned the task.
+     * https://msdn.microsoft.com/en-us/library/office/cc815865.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTTask
+     */
+    get taskAssigner() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskAssigner, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Names the most recent user who was the task owner.
+     * https://msdn.microsoft.com/en-us/library/office/cc842278.aspx
+     * @readonly
+     * @type {string}
+     * @memberof PSTTask
+     */
+    get taskLastUser() {
+        return this.getStringItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskLastUser, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Provides an aid to custom sorting tasks.
+     * https://msdn.microsoft.com/en-us/library/office/cc765654.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskOrdinal() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOrdinal, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates whether the task includes a recurrence pattern.
+     * https://msdn.microsoft.com/en-us/library/office/cc765875.aspx
+     * @type {boolean}
+     * @memberof PSTTask
+     */
+    get isTaskRecurring() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskFRecurring, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * https://docs.microsoft.com/en-us/office/client-developer/outlook/mapi/pidlidtaskrecurrence-canonical-property
+     * @type {RecurrencePattern}
+     * @memberof PSTTask
+     */
+    get taskRecurrencePattern() {
+        const recurrenceBLOB = this.getBinaryItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskRecurrence, PSTFile_class_1.PSTFile.PSETID_Task));
+        return recurrenceBLOB && new RecurrencePattern_class_1.RecurrencePattern(recurrenceBLOB);
+    }
+    /**
+     * https://docs.microsoft.com/en-us/office/client-developer/outlook/mapi/pidlidtaskdeadoccurrence-canonical-property
+     * @type {boolean}
+     * @memberof PSTTask
+     */
+    get taskDeadOccurrence() {
+        return this.getBooleanItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskDeadOccurrence, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the role of the current user relative to the task.
+     * https://msdn.microsoft.com/en-us/library/office/cc842113.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get taskOwnership() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskOwnership, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * Indicates the acceptance state of the task.
+     * https://msdn.microsoft.com/en-us/library/office/cc839689.aspx
+     * @readonly
+     * @type {number}
+     * @memberof PSTTask
+     */
+    get acceptanceState() {
+        return this.getIntItem(this._rootProvider.getNameToIdMapItem(OutlookProperties_1.OutlookProperties.PidLidTaskAcceptanceState, PSTFile_class_1.PSTFile.PSETID_Task));
+    }
+    /**
+     * JSON stringify the object properties.
+     * @returns {string}
+     * @memberof PSTTask
+     */
+    toJSON() {
+        const clone = Object.assign({
+            messageClass: this.messageClass,
+            subject: this.subject,
+            importance: this.importance,
+            transportMessageHeaders: this.transportMessageHeaders,
+            taskStatus: this.taskStatus,
+            percentComplete: this.percentComplete,
+            taskDateCompleted: this.taskDateCompleted,
+            taskActualEffort: this.taskActualEffort,
+            taskEstimatedEffort: this.taskEstimatedEffort,
+            taskVersion: this.taskVersion,
+            isTaskComplete: this.isTaskComplete,
+            taskOwner: this.taskOwner,
+            taskAssigner: this.taskAssigner,
+            taskLastUser: this.taskLastUser,
+            taskOrdinal: this.taskOrdinal,
+            isTaskRecurring: this.isTaskRecurring,
+            taskOwnership: this.taskOwnership,
+            acceptanceState: this.acceptanceState,
+        }, this);
+        return clone;
+    }
+}
+exports.PSTTask = PSTTask;
+
+
+/***/ }),
+
+/***/ 6621:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PSTUtil = void 0;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const long_1 = __importDefault(__webpack_require__(1583));
+const PSTAppointment_class_1 = __webpack_require__(3963);
+const PSTContact_class_1 = __webpack_require__(5920);
+const PSTMessage_class_1 = __webpack_require__(1973);
+const PSTTask_class_1 = __webpack_require__(3947);
+const PSTActivity_class_1 = __webpack_require__(8526);
+const iconv_lite_1 = __importDefault(__webpack_require__(4914));
+const PHUtil_1 = __webpack_require__(702);
+const PropertyContextUtil_1 = __webpack_require__(1662);
+const PAUtil_1 = __webpack_require__(4087);
+/**
+ * Utility functions for PST components
+ * @export
+ * @class PSTUtil
+ */
+class PSTUtil {
+    /**
+     * Convert little endian bytes to long
+     * @static
+     * @param {Buffer} data
+     * @param {number} [start]
+     * @param {number} [end]
+     * @returns {long}
+     * @memberof PSTUtil
+     */
+    static convertLittleEndianBytesToLong(data, start, end) {
+        if (!start) {
+            start = 0;
+        }
+        if (!end) {
+            end = data.length;
+        }
+        let offset = long_1.default.fromNumber(data[end - 1] & 0xff);
+        let tmpLongValue;
+        for (let x = end - 2; x >= start; x--) {
+            offset = offset.shiftLeft(8);
+            tmpLongValue = long_1.default.fromNumber(data[x] & 0xff);
+            offset = offset.xor(tmpLongValue);
+        }
+        return offset;
+    }
+    /**
+     * Convert big endian bytes to long
+     * @static
+     * @param {Buffer} data
+     * @param {number} [start]
+     * @param {number} [end]
+     * @returns {long}
+     * @memberof PSTUtil
+     */
+    static convertBigEndianBytesToLong(data, start, end) {
+        if (!start) {
+            start = 0;
+        }
+        if (!end) {
+            end = data.length;
+        }
+        let offset = long_1.default.ZERO;
+        for (let x = start; x < end; ++x) {
+            offset = offset.shiftLeft(8);
+            const tmpLongValue = long_1.default.fromNumber(data[x] & 0xff);
+            offset = offset.xor(tmpLongValue);
+        }
+        return offset;
+    }
+    /**
+     * Handle strings using codepages.
+     * @static
+     * @param {number} propertyId
+     * @returns
+     * @memberof PSTUtil
+     */
+    static getInternetCodePageCharset(propertyId) {
+        return this.codePages.get(propertyId);
+    }
+    /**
+     * Create JS string from buffer.
+     * @static
+     * @param {Buffer} data
+     * @param {number} stringType
+     * @param {string} codepage
+     * @returns
+     * @memberof PSTUtil
+     */
+    static createJavascriptString(data, stringType, codepage = 'utf8') {
+        // TODO - codepage is not used...
+        try {
+            if (stringType == 0x1f) {
+                // convert and trim any nulls
+                return data.toString('utf16le').replace(/\0/g, '');
+            }
+            else {
+                return iconv_lite_1.default.decode(data, codepage).toString();
+            }
+        }
+        catch (err) {
+            console.error('PSTUtil::createJavascriptString Unable to decode string\n' + err);
+            throw err;
+        }
+        return '';
+    }
+    /**
+     * Copy from one array to another
+     * @static
+     * @param {Buffer} src
+     * @param {number} srcPos
+     * @param {Buffer} dest
+     * @param {number} destPos
+     * @param {number} length
+     * @memberof PSTUtil
+     */
+    static arraycopy(src, srcPos, dest, destPos, length) {
+        // TODO FIX THIS - TOO SLOW?
+        let s = srcPos;
+        let d = destPos;
+        let i = 0;
+        while (i++ < length) {
+            dest[d++] = src[s++];
+        }
+    }
+    /**
+     * Decode a lump of data that has been encrypted with the compressible encryption
+     * @static
+     * @param {Buffer} data
+     * @returns {Buffer}
+     * @memberof PSTUtil
+     */
+    static decode(data) {
+        let temp;
+        for (let x = 0; x < data.length; x++) {
+            temp = data[x] & 0xff;
+            data[x] = this.compEnc[temp];
+        }
+        return data;
+    }
+    /**
+     * Decode a lump of data that has been encrypted with the compressible encryption
+     * @static
+     * @param {Buffer} data
+     * @returns {Buffer}
+     * @memberof PSTUtil
+     */
+    static decodeArray(data) {
+        let temp;
+        for (let x = 0; x < data.length; x++) {
+            temp = data[x] & 0xff;
+            data[x] = this.compEnc[temp];
+        }
+        return data;
+    }
+    /**
+     * Creates object based on message class
+     * https://msdn.microsoft.com/en-us/vba/outlook-vba/articles/item-types-and-message-classes
+     * @static
+     * @param {PSTFile} rootProvider
+     * @param {DescriptorIndexNode} folderIndexNode
+     * @param {PSTTableBC} table
+     * @param {Map<number, PSTDescriptorItem>} localDescriptorItems
+     * @returns {PSTMessage}
+     * @memberof PSTUtil
+     */
+    static createAppropriatePSTMessageObject(rootProvider, node, subNode, resolver, propertyFinderDelegation) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (propertyFinderDelegation === undefined) {
+                const heap = yield (0, PHUtil_1.getHeapFrom)(subNode);
+                const pc = yield (0, PropertyContextUtil_1.getPropertyContext)(heap, resolver);
+                const propList = yield pc.list();
+                propertyFinderDelegation = (0, PAUtil_1.createPropertyFinder)(propList);
+            }
+            const propertyFinder = propertyFinderDelegation;
+            const item = propertyFinder.findByKey(0x001a);
+            let messageClass = '';
+            if (item !== undefined && typeof item.value === 'string') {
+                messageClass = item.value;
+            }
+            switch (messageClass) {
+                case 'IPM.Note':
+                case 'IPM.Note.SMIME.MultipartSigned':
+                case 'IPM.Note.Agenda':
+                    // email message
+                    const msg = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(msg.body);
+                    // Log.debug1(msg.numberOfRecipients.toString());
+                    // Log.debug1(msg.colorCategories.toString());
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return msg;
+                case 'IPM.Appointment':
+                case 'IPM.OLE.CLASS.{00061055-0000-0000-C000-000000000046}':
+                case 'IPM.Schedule.Meeting.Canceled':
+                case 'IPM.Schedule.Meeting.Resp.Pos':
+                case 'IPM.Schedule.Meeting.Resp.Tent':
+                case 'IPM.Schedule.Meeting.Notification.Forward':
+                case 'IPM.Schedule.Meeting.Resp.Neg':
+                    // appointment
+                    // messageClass.startsWith('IPM.Schedule.Meeting')
+                    const apt = new PSTAppointment_class_1.PSTAppointment(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return apt;
+                case 'IPM.Contact':
+                    // contact
+                    const contact = new PSTContact_class_1.PSTContact(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return contact;
+                case 'IPM.Task':
+                    // task
+                    const task = new PSTTask_class_1.PSTTask(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return task;
+                case 'IPM.Activity':
+                    // journal entry
+                    const activity = new PSTActivity_class_1.PSTActivity(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return activity;
+                case 'IPM.Post.Rss':
+                    // debugger;
+                    // Rss Feed
+                    const rss = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return rss;
+                case 'IPM.DistList':
+                    // debugger;
+                    // Distribution list
+                    const dl = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return dl;
+                // return new PSTDistList(theFile, folderIndexNode, table, localDescriptorItems);
+                case 'IPM.Note.Rules.OofTemplate.Microsoft':
+                    // debugger;
+                    // Out of Office rule
+                    const oof = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return oof;
+                case 'IPM.Schedule.Meeting.Request':
+                    // Meeting request
+                    const meetReq = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return meetReq;
+                case 'REPORT.IPM.Note.NDR':
+                    // Receipt of non-delivery
+                    const ndr = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return ndr;
+                case 'IPM.StickyNote':
+                    // Sticky note
+                    const sticky = new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                    // Log.debug1(JSON.stringify(msg, null, 2));
+                    return sticky;
+                case 'REPORT.IPM.Note.IPNRN':
+                    // Read receipt
+                    // debugger;
+                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.IPNRN');
+                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                case 'REPORT.IPM.Note.IPNNRN':
+                    // Not-read notification
+                    // debugger;
+                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.IPNNRN');
+                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                case 'IPM.Schedule.Meeting.Request':
+                    // Meeting request
+                    // debugger;
+                    // console.log('PSTUtil::createAppropriatePSTMessageObject IPM.Schedule.Meeting.Request');
+                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                case 'REPORT.IPM.Note.DR':
+                    // Delivery receipt
+                    // debugger;
+                    // console.log('PSTUtil::createAppropriatePSTMessageObject REPORT.IPM.Note.DR');
+                    return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+                default:
+                    console.error('PSTUtil::createAppropriatePSTMessageObject unknown message type: ' +
+                        messageClass);
+            }
+            return new PSTMessage_class_1.PSTMessage(rootProvider, node, subNode, propertyFinder);
+        });
+    }
+    /**
+     * Converts a Windows FILETIME into a {@link Date}. The Windows FILETIME structure holds a date and time associated with a
+     * file. The structure identifies a 64-bit integer specifying the number of 100-nanosecond intervals which have passed since
+     * January 1, 1601. This 64-bit value is split into the two double words stored in the structure.
+     *
+     * @static
+     * @param {long} hi
+     * @param {long} low
+     * @returns {Date}
+     * @memberof PSTUtil
+     */
+    static filetimeToDate(hi, low) {
+        const h = hi.shiftLeft(32);
+        const l = low.and(0xffffffff);
+        const filetime = h.or(l);
+        const msSince16010101 = filetime.divide(1000 * 10);
+        const epochDiff = long_1.default.fromValue('11644473600000');
+        const msSince19700101 = msSince16010101.subtract(epochDiff);
+        return new Date(msSince19700101.toNumber());
+    }
+}
+exports.PSTUtil = PSTUtil;
+// substitution table for the compressible encryption type.
+PSTUtil.compEnc = [
+    0x47,
+    0xf1,
+    0xb4,
+    0xe6,
+    0x0b,
+    0x6a,
+    0x72,
+    0x48,
+    0x85,
+    0x4e,
+    0x9e,
+    0xeb,
+    0xe2,
+    0xf8,
+    0x94,
+    0x53,
+    0xe0,
+    0xbb,
+    0xa0,
+    0x02,
+    0xe8,
+    0x5a,
+    0x09,
+    0xab,
+    0xdb,
+    0xe3,
+    0xba,
+    0xc6,
+    0x7c,
+    0xc3,
+    0x10,
+    0xdd,
+    0x39,
+    0x05,
+    0x96,
+    0x30,
+    0xf5,
+    0x37,
+    0x60,
+    0x82,
+    0x8c,
+    0xc9,
+    0x13,
+    0x4a,
+    0x6b,
+    0x1d,
+    0xf3,
+    0xfb,
+    0x8f,
+    0x26,
+    0x97,
+    0xca,
+    0x91,
+    0x17,
+    0x01,
+    0xc4,
+    0x32,
+    0x2d,
+    0x6e,
+    0x31,
+    0x95,
+    0xff,
+    0xd9,
+    0x23,
+    0xd1,
+    0x00,
+    0x5e,
+    0x79,
+    0xdc,
+    0x44,
+    0x3b,
+    0x1a,
+    0x28,
+    0xc5,
+    0x61,
+    0x57,
+    0x20,
+    0x90,
+    0x3d,
+    0x83,
+    0xb9,
+    0x43,
+    0xbe,
+    0x67,
+    0xd2,
+    0x46,
+    0x42,
+    0x76,
+    0xc0,
+    0x6d,
+    0x5b,
+    0x7e,
+    0xb2,
+    0x0f,
+    0x16,
+    0x29,
+    0x3c,
+    0xa9,
+    0x03,
+    0x54,
+    0x0d,
+    0xda,
+    0x5d,
+    0xdf,
+    0xf6,
+    0xb7,
+    0xc7,
+    0x62,
+    0xcd,
+    0x8d,
+    0x06,
+    0xd3,
+    0x69,
+    0x5c,
+    0x86,
+    0xd6,
+    0x14,
+    0xf7,
+    0xa5,
+    0x66,
+    0x75,
+    0xac,
+    0xb1,
+    0xe9,
+    0x45,
+    0x21,
+    0x70,
+    0x0c,
+    0x87,
+    0x9f,
+    0x74,
+    0xa4,
+    0x22,
+    0x4c,
+    0x6f,
+    0xbf,
+    0x1f,
+    0x56,
+    0xaa,
+    0x2e,
+    0xb3,
+    0x78,
+    0x33,
+    0x50,
+    0xb0,
+    0xa3,
+    0x92,
+    0xbc,
+    0xcf,
+    0x19,
+    0x1c,
+    0xa7,
+    0x63,
+    0xcb,
+    0x1e,
+    0x4d,
+    0x3e,
+    0x4b,
+    0x1b,
+    0x9b,
+    0x4f,
+    0xe7,
+    0xf0,
+    0xee,
+    0xad,
+    0x3a,
+    0xb5,
+    0x59,
+    0x04,
+    0xea,
+    0x40,
+    0x55,
+    0x25,
+    0x51,
+    0xe5,
+    0x7a,
+    0x89,
+    0x38,
+    0x68,
+    0x52,
+    0x7b,
+    0xfc,
+    0x27,
+    0xae,
+    0xd7,
+    0xbd,
+    0xfa,
+    0x07,
+    0xf4,
+    0xcc,
+    0x8e,
+    0x5f,
+    0xef,
+    0x35,
+    0x9c,
+    0x84,
+    0x2b,
+    0x15,
+    0xd5,
+    0x77,
+    0x34,
+    0x49,
+    0xb6,
+    0x12,
+    0x0a,
+    0x7f,
+    0x71,
+    0x88,
+    0xfd,
+    0x9d,
+    0x18,
+    0x41,
+    0x7d,
+    0x93,
+    0xd8,
+    0x58,
+    0x2c,
+    0xce,
+    0xfe,
+    0x24,
+    0xaf,
+    0xde,
+    0xb8,
+    0x36,
+    0xc8,
+    0xa1,
+    0x80,
+    0xa6,
+    0x99,
+    0x98,
+    0xa8,
+    0x2f,
+    0x0e,
+    0x81,
+    0x65,
+    0x73,
+    0xe4,
+    0xc2,
+    0xa2,
+    0x8a,
+    0xd4,
+    0xe1,
+    0x11,
+    0xd0,
+    0x08,
+    0x8b,
+    0x2a,
+    0xf2,
+    0xed,
+    0x9a,
+    0x64,
+    0x3f,
+    0xc1,
+    0x6c,
+    0xf9,
+    0xec,
+];
+PSTUtil.codePages = new Map([
+    [28596, 'iso-8859-6'],
+    [1256, 'windows-1256'],
+    [28594, 'iso-8859-4'],
+    [1257, 'windows-1257'],
+    [28592, 'iso-8859-2'],
+    [1250, 'windows-1250'],
+    [936, 'gb2312'],
+    [52936, 'hz-gb-2312'],
+    [54936, 'gb18030'],
+    [950, 'big5'],
+    [28595, 'iso-8859-5'],
+    [20866, 'koi8-r'],
+    [21866, 'koi8-u'],
+    [1251, 'windows-1251'],
+    [28597, 'iso-8859-7'],
+    [1253, 'windows-1253'],
+    [38598, 'iso-8859-8-i'],
+    [1255, 'windows-1255'],
+    [51932, 'euc-jp'],
+    [50220, 'iso-2022-jp'],
+    [50221, 'csISO2022JP'],
+    [932, 'iso-2022-jp'],
+    [949, 'ks_c_5601-1987'],
+    [51949, 'euc-kr'],
+    [28593, 'iso-8859-3'],
+    [28605, 'iso-8859-15'],
+    [874, 'windows-874'],
+    [28599, 'iso-8859-9'],
+    [1254, 'windows-1254'],
+    [65000, 'utf-7'],
+    [65001, 'utf-8'],
+    [20127, 'us-ascii'],
+    [1258, 'windows-1258'],
+    [28591, 'iso-8859-1'],
+    [1252, 'Windows-1252'],
+]);
+// maps hex codes to names for properties
+PSTUtil.propertyName = new Map([
+    [0x0002, 'PidTagAlternateRecipientAllowed'],
+    [0x0003, 'PidTagNameidStreamEntry'],
+    [0x0004, 'PidTagNameidStreamString'],
+    [0x0017, 'PidTagImportance'],
+    [0x001a, 'PidTagMessageClass'],
+    [0x0023, 'PidTagOriginatorDeliveryReportRequested'],
+    [0x0026, 'PidTagPriority'],
+    [0x0029, 'PidLidOldWhenStartWhole'],
+    [0x002b, 'PidTagRecipientReassignmentProhibited'],
+    [0x002e, 'PidTagOriginalSensitivity'],
+    [0x0036, 'PidTagSensitivity'],
+    [0x0037, 'PidTagSubject'],
+    [0x0039, 'PidTagClientSubmitTime'],
+    [0x003b, 'PidTagSentRepresentingSearchKey'],
+    [0x003f, 'PidTagReceivedByEntryId'],
+    [0x0040, 'PidTagReceivedByName'],
+    [0x0041, 'PidTagSentRepresentingEntryId'],
+    [0x0042, 'PidTagSentRepresentingName'],
+    [0x0043, 'PidTagReceivedRepresentingEntryId'],
+    [0x0044, 'PidTagReceivedRepresentingName'],
+    [0x004d, 'PidTagOriginalAuthorName'],
+    [0x0052, 'PidTagReceivedRepresentingSearchKey'],
+    [0x0057, 'PidTagMessageToMe'],
+    [0x0058, 'PidTagMessageCcMe'],
+    [0x0060, 'PidTagStartDate'],
+    [0x0061, 'PidTagEndDate'],
+    [0x0062, 'PidTagOwnerAppointmentId'],
+    [0x0063, 'PidTagResponseRequested'],
+    [0x0064, 'PidTagSentRepresentingAddressType'],
+    [0x0065, 'PidTagSentRepresentingEmailAddress'],
+    [0x0070, 'PidTagConversationTopic'],
+    [0x0071, 'PidTagConversationIndex'],
+    [0x0075, 'PidTagReceivedByAddressType'],
+    [0x0076, 'PidTagReceivedByEmailAddress'],
+    [0x0077, 'PidTagReceivedRepresentingAddressType'],
+    [0x0078, 'PidTagReceivedRepresentingEmailAddress'],
+    [0x007d, 'PidTagTransportMessageHeaders'],
+    [0x0c15, 'PidTagRecipientType'],
+    [0x0c17, 'PidTagReplyRequested'],
+    [0x0c19, 'PidTagSenderEntryId'],
+    [0x0c1a, 'PidTagSenderName'],
+    [0x0c1d, 'PidTagSenderSearchKey'],
+    [0x0c1e, 'PidTagSenderAddressType'],
+    [0x0c1f, 'PidTagSenderEmailAddress'],
+    [0x0e01, 'PidTagDeleteAfterSubmit'],
+    [0x0e02, 'PidTagDisplayBcc'],
+    [0x0e03, 'PidTagDisplayCc'],
+    [0x0e04, 'PidTagDisplayTo'],
+    [0x0e06, 'PidTagMessageDeliveryTime'],
+    [0x0e07, 'PidTagMessageFlags'],
+    [0x0e08, 'PidTagMessageSize'],
+    [0x0e0f, 'PidTagResponsibility'],
+    [0x0e20, 'PidTagAttachSize'],
+    [0x0e23, 'PidTagInternetArticleNumber'],
+    [0x0e38, 'PidTagReplFlags'],
+    [0x0e62, 'PidTagUrlCompNameSet'],
+    [0x0e79, 'PidTagTrustSender'],
+    [0x0ff9, 'PidTagRecordKey'],
+    [0x0ffe, 'PidTagObjectType'],
+    [0x0fff, 'PidTagEntryId'],
+    [0x1000, 'PidTagBody'],
+    [0x1009, 'PidTagRtfCompressed'],
+    [0x1013, 'PidTagBodyHtml'],
+    [0x1035, 'PidTagInternetMessageId'],
+    [0x1039, 'PidTagInternetReferences'],
+    [0x1042, 'PidTagInReplyToId'],
+    [0x1080, 'PidTagIconIndex'],
+    [0x1081, 'PidTagLastVerbExecuted'],
+    [0x1082, 'PidTagLastVerbExecutionTime'],
+    [0x1096, 'PidTagBlockStatus'],
+    [0x10c3, 'PidTagICalendarStartTime'],
+    [0x10c4, 'PidTagICalendarEndTime'],
+    [0x10f2, 'Unknown_10F2'],
+    [0x10f3, 'PidTagUrlCompName'],
+    [0x10f4, 'PidTagAttributeHidden'],
+    [0x10f5, 'PidTagAttributeSystem'],
+    [0x10f6, 'PidTagAttributeReadOnly'],
+    [0x3001, 'PidTagDisplayName'],
+    [0x3002, 'PidTagAddressType'],
+    [0x3003, 'PidTagEmailAddress'],
+    [0x3007, 'PidTagCreationTime'],
+    [0x3008, 'PidTagLastModificationTime'],
+    [0x300b, 'PidTagSearchKey'],
+    [0x3701, 'PidTagAttachDataBinary'],
+    [0x3702, 'PidTagAttachEncoding'],
+    [0x3703, 'PidTagAttachExtension'],
+    [0x3704, 'PidTagAttachFilename'],
+    [0x3705, 'PidTagAttachMethod'],
+    [0x3709, 'PidTagAttachRendering'],
+    [0x370b, 'PidTagRenderingPosition'],
+    [0x370e, 'PidTagAttachMimeTag'],
+    [0x370a, 'PidTagAttachTag'],
+    [0x3712, 'PidTagAttachContentId'],
+    [0x3714, 'PidTagAttachFlags'],
+    [0x3900, 'PidTagDisplayType'],
+    [0x39fe, 'PidTagPrimarySmtpAddress'],
+    [0x39ff, 'PidTag7BitDisplayName'],
+    [0x3a00, 'PidTagAccount'],
+    [0x3a08, 'PidTagBusinessTelephoneNumber'],
+    [0x3a20, 'PidTagTransmittableDisplayName'],
+    [0x3a40, 'PidTagSendRichInfo'],
+    [0x3a70, 'PidTagUserX509Certificate'],
+    [0x3a71, 'PidTagSendInternetEncoding'],
+    [0x3fde, 'PidTagInternetCodepage'],
+    [0x3ff1, 'PidTagMessageLocaleId'],
+    [0x3ffd, 'PidTagMessageCodepage'],
+    [0x3ff9, 'PidTagCreatorName'],
+    [0x4019, 'PidTagSenderFlags'],
+    [0x401a, 'PidTagSentRepresentingFlags'],
+    [0x401b, 'PidTagReceivedByFlags'],
+    [0x401c, 'PidTagReceivedRepresentingFlags'],
+    [0x403e, 'Unknown_403E'],
+    [0x4a08, 'Unknown_4A08'],
+    [0x5902, 'PidTagInternetMailOverrideFormat'],
+    [0x5909, 'PidTagMessageEditorFormat'],
+    [0x5fde, 'PidTagRecipientResourceState'],
+    [0x5fdf, 'PidTagRecipientOrder'],
+    [0x5feb, 'Unknown_5FEB'],
+    [0x5fef, 'Unknown_5FEF'],
+    [0x5ff2, 'Unknown_5FF2'],
+    [0x5ff5, 'Unknown_5FF5'],
+    [0x5ff6, 'PidTagRecipientDisplayName'],
+    [0x5ff7, 'PidTagRecipientEntryId'],
+    [0x5ffb, 'PidTagRecipientTrackStatusTime'],
+    [0x5ffd, 'PidTagRecipientFlags'],
+    [0x5fff, 'PidTagRecipientTrackStatus'],
+    [0x6001, 'PidTagNickname'],
+    [0x6610, 'Unknown_6610'],
+    [0x6614, 'Unknown_6614'],
+    [0x6617, 'Unknown_6617'],
+    [0x6619, 'PidTagUserEntryId'],
+    [0x6743, 'Unknown_6743'],
+    [0x6744, 'Unknown_6744'],
+    [0x67f2, 'PidTagLtpRowId'],
+    [0x67f3, 'PidTagLtpRowVer'],
+    [0x67f4, 'Unknown_67F4'],
+    [0x7ffa, 'PidTagAttachmentLinkId'],
+    [0x7ffb, 'PidTagExceptionStartTime'],
+    [0x7ffc, 'PidTagExceptionEndTime'],
+    [0x7ffd, 'PidTagAttachmentFlags'],
+    [0x7ffe, 'PidTagAttachmentHidden'],
+    [0x7fff, 'PidTagAttachmentContactPhoto'],
+    [0x3ffa, 'PidTagLastModifiedName_W'],
+    [0x3ffb, 'PidTagLastModifierEntryId'],
+]);
+// Heap node
+PSTUtil.NID_TYPE_HID = 0x00;
+// Internal node (section 2.4.1)
+PSTUtil.NID_TYPE_INTERNAL = 0x01;
+// Normal Folder object (PC)
+PSTUtil.NID_TYPE_NORMAL_FOLDER = 0x02;
+// Search Folder object (PC)
+PSTUtil.NID_TYPE_SEARCH_FOLDER = 0x03;
+// Normal Message object (PC)
+PSTUtil.NID_TYPE_NORMAL_MESSAGE = 0x04;
+// Attachment object (PC)
+PSTUtil.NID_TYPE_ATTACHMENT = 0x05;
+// Queue of changed objects for search Folder objects
+PSTUtil.NID_TYPE_SEARCH_UPDATE_QUEUE = 0x06;
+// Defines the search criteria for a search folder object
+PSTUtil.NID_TYPE_SEARCH_CRITERIA_OBJECT = 0x07;
+// Folder associated info (FAI) message object (PC)
+PSTUtil.NID_TYPE_ASSOC_MESSAGE = 0x08;
+// Internal, persisted view-related
+PSTUtil.NID_TYPE_CONTENTS_TABLE_INDEX = 0x0a;
+// Receive Folder object (Inbox)
+PSTUtil.NID_TYPE_RECEIVE_FOLDER_TABLE = 0x0b;
+// Outbound queue (Outbox)
+PSTUtil.NID_TYPE_OUTGOING_QUEUE_TABLE = 0x0c;
+// Hierarchy table (TC)
+PSTUtil.NID_TYPE_HIERARCHY_TABLE = 0x0d;
+// Contents table (TC)
+PSTUtil.NID_TYPE_CONTENTS_TABLE = 0x0e;
+// FAI contents table (TC)
+PSTUtil.NID_TYPE_ASSOC_CONTENTS_TABLE = 0x0f;
+// Contents table (TC) of a search folder object
+PSTUtil.NID_TYPE_SEARCH_CONTENTS_TABLE = 0x10;
+// Attachment table (TC)
+PSTUtil.NID_TYPE_ATTACHMENT_TABLE = 0x11;
+// Recipient table (TC)
+PSTUtil.NID_TYPE_RECIPIENT_TABLE = 0x12;
+// Internal, persisted view-related
+PSTUtil.NID_TYPE_SEARCH_TABLE_INDEX = 0x13;
+// LTP
+PSTUtil.NID_TYPE_LTP = 0x1f;
+/**
+ * Determine if character is alphanumeric
+ *
+ * @static
+ * @memberof PSTUtil
+ */
+PSTUtil.isAlphaNumeric = (ch) => {
+    return ch.match(/^[a-z0-9]+$/i) !== null;
+};
+
+
+/***/ }),
+
+/***/ 1662:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getPropertyContext = void 0;
+const BTHeap_1 = __webpack_require__(8832);
+const bTypePC = 0xBC;
+function copy(array) {
+    return array
+        .map(it => Object.assign({}, it));
+}
+function getPropertyContext(heap, resolver) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (heap.bClientSig !== bTypePC) {
+            throw new Error("bClientSig must be bTypePC");
+        }
+        const reader = heap.getReader();
+        function getRecords() {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    const index_data = yield (0, BTHeap_1.getBTHeapReaderFrom)(reader, heap.userRootHnid);
+                    return yield index_data.list();
+                }
+                catch (ex) {
+                    throw new Error(`getRecords failure of hnid ${heap.userRootHnid} of ${heap} --> ${ex}`);
+                }
+            });
+        }
+        const rawProperties = (yield getRecords())
+            .map(record => {
+            const keyView = new DataView(record.key);
+            const dataView = new DataView(record.data);
+            return {
+                key: keyView.getUint16(0, true),
+                type: dataView.getUint16(0, true),
+                value: record.data.slice(2),
+            };
+        });
+        return {
+            listRaw() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return copy(rawProperties);
+                });
+            },
+            list() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const props = [];
+                    for (let it of rawProperties) {
+                        try {
+                            props.push({
+                                key: it.key,
+                                type: it.type,
+                                value: yield resolver.resolveValueOf(it.key, it.type, it.value, reader),
+                            });
+                        }
+                        catch (ex) {
+                            throw new Error(`getPropertyContext.list() resolving property`
+                                + ` key=0x${it.key.toString(16).padStart(4, '0')}`
+                                + ` type=0x${it.type.toString(16).padStart(4, '0')}`
+                                + ` of ${heap} failure`
+                                + ` --> ${ex}`);
+                        }
+                    }
+                    return props;
+                });
+            },
+        };
+    });
+}
+exports.getPropertyContext = getPropertyContext;
+
+
+/***/ }),
+
+/***/ 1635:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PropertyTypeObject = void 0;
+/**
+ * The value representation of `PT_OBJECT` type
+ *
+ * @see [[MS-PST]: PtypObject Properties | Microsoft Docs](https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-pst/49457d57-820e-453d-bbc0-1d192a999814)
+ */
+class PropertyTypeObject {
+    constructor(subNodeId, size) {
+        this._subNodeId = subNodeId;
+        this._size = size;
+    }
+    get subNodeId() {
+        return this._subNodeId;
+    }
+    get size() {
+        return this._size;
+    }
+}
+exports.PropertyTypeObject = PropertyTypeObject;
+
+
+/***/ }),
+
+/***/ 3805:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PropertyValueResolverV1 = void 0;
+const long_1 = __importDefault(__webpack_require__(1583));
+const PLUtil_1 = __webpack_require__(5408);
+const PropertyTypeObject_1 = __webpack_require__(1635);
+const PSTUtil_class_1 = __webpack_require__(6621);
+const typeConverters = {};
+const PT_BOOLEAN = 0xB;
+const PT_DOUBLE = 0x5;
+const PT_LONG = 0x3;
+const PT_OBJECT = 0xD;
+const PT_LONGLONG = 0x14;
+const PT_STRING8 = 0x1E;
+const PT_UNICODE = 0x1F;
+const PT_SYSTIME = 0x40;
+const PT_CLSID = 0x48;
+const PT_SHORT = 0x2;
+const PT_FLOAT = 0x4;
+const PT_MV_UNICODE = 0x101F;
+const PT_MV_STRING8 = 0x101E;
+const PT_MV_BINARY = 0x1102;
+const PT_MV_LONG = 0x1003;
+const PT_MV_CLSID = 0x1048;
+const PT_MVPV_BINARY = 0x2102;
+typeConverters[PT_SHORT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    return arg.view.getInt16(0, true);
+});
+typeConverters[PT_FLOAT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    return arg.view.getFloat32(0, true);
+});
+typeConverters[PT_LONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    return arg.view.getInt32(0, true);
+});
+typeConverters[PT_OBJECT] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const bytes = yield arg.resolveHeap(heap);
+    if (bytes !== undefined) {
+        const view = new DataView(bytes);
+        return new PropertyTypeObject_1.PropertyTypeObject(view.getUint32(0, true), view.getUint32(4, true));
+    }
+    return bytes;
+});
+typeConverters[PT_LONGLONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const bytes = yield arg.getBytes(8);
+    if (bytes !== undefined) {
+        const view = new DataView(bytes);
+        return (0, PLUtil_1.readLong)(view, 0);
+    }
+    else {
+        return undefined;
+    }
+});
+typeConverters[PT_DOUBLE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const bytes = yield arg.getBytes(8);
+    return (bytes !== undefined)
+        ? new DataView(bytes).getFloat64(0, true)
+        : undefined;
+});
+typeConverters[PT_BOOLEAN] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    return arg.view.getUint8(0) !== 0;
+});
+typeConverters[PT_STRING8] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const bytes = yield arg.resolveHeap(heap);
+    return (bytes !== undefined)
+        ? yield arg.convertAnsiString(bytes)
+        : undefined;
+});
+typeConverters[PT_UNICODE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const bytes = yield arg.resolveHeap(heap);
+    return (bytes !== undefined)
+        ? Buffer.from(bytes).toString('utf16le').replace(/\0/g, '')
+        : undefined;
+    // `.replace(/\0/g, '')` is needed to eliminate a trailing null char.
+});
+typeConverters[PT_SYSTIME] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const bytes = yield arg.getBytes(8);
+    if (bytes !== undefined) {
+        const view = new DataView(bytes);
+        return PSTUtil_class_1.PSTUtil.filetimeToDate(new long_1.default(view.getUint32(4, true)), new long_1.default(view.getUint32(0, true)));
+    }
+    else {
+        return undefined;
+    }
+});
+typeConverters[PT_CLSID] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const bytes = yield arg.resolveHeap(heap);
+    return bytes;
+});
+typeConverters[0x0102] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const bytes = yield arg.resolveHeap(heap);
+    return bytes;
+});
+typeConverters[PT_MV_UNICODE] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const view = new DataView(bytes);
+            const count = view.getUint32(0, true);
+            for (let x = 0; x < count - 1; x++) {
+                const from = view.getUint32(4 + 4 * (x), true);
+                const to = view.getUint32(4 + 4 * (x + 1), true);
+                const elementBytes = bytes.slice(from, to);
+                list.push(Buffer.from(elementBytes).toString('utf16le').replace(/\0/g, ''));
+            }
+        }
+    }
+    return list;
+});
+typeConverters[PT_MV_BINARY] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const view = new DataView(bytes);
+            const count = view.getUint32(0, true);
+            for (let x = 0; x < count - 1; x++) {
+                const from = view.getUint32(4 + 4 * (x), true);
+                const to = view.getUint32(4 + 4 * (x + 1), true);
+                const elementBytes = bytes.slice(from, to);
+                list.push(elementBytes);
+            }
+        }
+    }
+    return list;
+});
+typeConverters[PT_MV_LONG] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const view = new DataView(bytes);
+            const count = bytes.byteLength / 4;
+            for (let x = 0; x < count; x++) {
+                list.push(view.getInt32(4 * x, true));
+            }
+        }
+    }
+    return list;
+});
+typeConverters[PT_MV_CLSID] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const count = bytes.byteLength / 16;
+            for (let x = 0; x < count; x++) {
+                const from = 16 * (x);
+                const to = 16 * (x + 1);
+                const elementBytes = bytes.slice(from, to);
+                list.push(elementBytes);
+            }
+        }
+    }
+    return list;
+});
+typeConverters[PT_MV_STRING8] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const view = new DataView(bytes);
+            const count = view.getUint32(0, true);
+            for (let x = 0; x < count - 1; x++) {
+                const from = view.getUint32(4 + 4 * (x), true);
+                const to = view.getUint32(4 + 4 * (x + 1), true);
+                const elementBytes = bytes.slice(from, to);
+                list.push(yield arg.convertAnsiString(elementBytes));
+            }
+        }
+    }
+    return list;
+});
+typeConverters[PT_MVPV_BINARY] = (arg) => __awaiter(void 0, void 0, void 0, function* () {
+    // not sure
+    const heap = arg.view.getUint32(0, true);
+    const list = [];
+    if (heap !== 0) {
+        const bytes = yield arg.resolveHeap(heap);
+        if (bytes !== undefined) {
+            const view = new DataView(bytes);
+            const count = view.getUint32(0, true);
+            for (let x = 0; x < count - 1; x++) {
+                const from = view.getUint32(4 + 4 * (x), true);
+                const to = view.getUint32(4 + 4 * (x + 1), true);
+                const elementBytes = bytes.slice(from, to);
+                list.push(elementBytes);
+            }
+        }
+    }
+    return list;
+});
+function mixIntoOne(array) {
+    if (array.length === 0) {
+        return new ArrayBuffer(0);
+    }
+    else if (array.length === 1) {
+        return array[0];
+    }
+    else {
+        const numBytes = array.reduce((prev, it) => prev + it.byteLength, 0);
+        const one = new ArrayBuffer(numBytes);
+        const dest = new Uint8Array(one);
+        array.reduce((nextPos, source) => {
+            dest.set(new Uint8Array(source), nextPos);
+            return nextPos + source.byteLength;
+        }, 0);
+        return one;
+    }
+}
+class PropertyValueResolverV1 {
+    constructor(convertAnsiString) {
+        this.convertAnsiString = convertAnsiString;
+    }
+    resolveValueOf(key, type, value, heap) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const view = new DataView(value);
+            function resolveHeap(hnid) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return mixIntoOne(yield heap.getHeapBuffers(hnid));
+                });
+            }
+            const converter = typeConverters[type];
+            if (converter === undefined) {
+                throw new Error(`property type 0x${type.toString(16)} is unknown. please define a typeConverter in PropertyValueResolverV1.ts`);
+            }
+            return yield converter({
+                view: view,
+                heap: heap,
+                getBytes(numBytes) {
+                    return __awaiter(this, void 0, void 0, function* () {
+                        const { byteLength } = value;
+                        if (byteLength === 4 && byteLength < numBytes) {
+                            const hnid = view.getUint32(0, true);
+                            return yield resolveHeap(hnid);
+                        }
+                        else if (byteLength !== 4 && numBytes <= byteLength) {
+                            return value.slice(0, numBytes);
+                        }
+                        else {
+                            throw new Error("dont know how to provide buffer");
+                        }
+                    });
+                },
+                resolveHeap: resolveHeap,
+                convertAnsiString: this.convertAnsiString,
+            });
+        });
+    }
+}
+exports.PropertyValueResolverV1 = PropertyValueResolverV1;
+
+
+/***/ }),
+
+/***/ 9346:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RecurrencePattern = exports.NthOccurrence = exports.EndType = exports.PatternType = exports.RecurFrequency = void 0;
+const OFFSETS = {
+    RecurFrequency: 4,
+    PatternType: 6,
+    FirstDateTime: 10,
+    Period: 14,
+    PatternTypeSpecific: 22,
+    EndType: 22,
+    OccurrenceCount: 26,
+    FirstDOW: 30,
+    StartDate: -8,
+    EndDate: -4,
+};
+var RecurFrequency;
+(function (RecurFrequency) {
+    RecurFrequency[RecurFrequency["Daily"] = 8202] = "Daily";
+    RecurFrequency[RecurFrequency["Weekly"] = 8203] = "Weekly";
+    RecurFrequency[RecurFrequency["Monthly"] = 8204] = "Monthly";
+    RecurFrequency[RecurFrequency["Yearly"] = 8205] = "Yearly";
+})(RecurFrequency = exports.RecurFrequency || (exports.RecurFrequency = {}));
+var PatternType;
+(function (PatternType) {
+    PatternType[PatternType["Day"] = 0] = "Day";
+    PatternType[PatternType["Week"] = 1] = "Week";
+    PatternType[PatternType["Month"] = 2] = "Month";
+    PatternType[PatternType["MonthEnd"] = 4] = "MonthEnd";
+    PatternType[PatternType["MonthNth"] = 3] = "MonthNth";
+})(PatternType = exports.PatternType || (exports.PatternType = {}));
+var EndType;
+(function (EndType) {
+    EndType[EndType["AfterDate"] = 8225] = "AfterDate";
+    EndType[EndType["AfterNOccurrences"] = 8226] = "AfterNOccurrences";
+    EndType[EndType["NeverEnd"] = 8227] = "NeverEnd";
+})(EndType = exports.EndType || (exports.EndType = {}));
+var NthOccurrence;
+(function (NthOccurrence) {
+    NthOccurrence[NthOccurrence["First"] = 1] = "First";
+    NthOccurrence[NthOccurrence["Second"] = 2] = "Second";
+    NthOccurrence[NthOccurrence["Third"] = 3] = "Third";
+    NthOccurrence[NthOccurrence["Fourth"] = 4] = "Fourth";
+    NthOccurrence[NthOccurrence["Last"] = 5] = "Last";
+})(NthOccurrence = exports.NthOccurrence || (exports.NthOccurrence = {}));
+class RecurrencePattern {
+    constructor(buffer) {
+        this.buffer = buffer;
+        const bufferEnd = buffer.length;
+        let patternTypeOffset = 0;
+        this.recurFrequency = this.readInt(OFFSETS.RecurFrequency, 1);
+        this.patternType = this.readInt(OFFSETS.PatternType, 1);
+        this.firstDateTime = winToJsDate(this.readInt(OFFSETS.FirstDateTime, 2));
+        this.period = this.readInt(OFFSETS.Period, 2);
+        this.patternTypeSpecific = this.readPatternTypeSpecific(this.patternType);
+        switch (this.patternType) {
+            case PatternType.Week:
+            case PatternType.Month:
+            case PatternType.MonthEnd:
+                patternTypeOffset = 4;
+                break;
+            case PatternType.MonthNth:
+                patternTypeOffset = 8;
+                break;
+        }
+        this.endType = this.readInt(OFFSETS.EndType + patternTypeOffset, 2);
+        this.occurrenceCount = this.readInt(OFFSETS.OccurrenceCount + patternTypeOffset, 2);
+        this.firstDOW = this.readInt(OFFSETS.FirstDOW + patternTypeOffset, 2);
+        this.startDate = winToJsDate(this.readInt(bufferEnd + OFFSETS.StartDate, 2));
+        this.endDate = winToJsDate(this.readInt(bufferEnd + OFFSETS.EndDate, 2));
+    }
+    toJSON() {
+        return {
+            recurFrequency: RecurFrequency[this.recurFrequency],
+            patternType: PatternType[this.patternType],
+            firstDateTime: this.firstDateTime,
+            period: this.period,
+            patternTypeSpecific: this.patternTypeSpecific,
+            endType: EndType[this.endType],
+            occurrenceCount: this.occurrenceCount,
+            firstDOW: this.firstDOW,
+            startDate: this.startDate,
+            endDate: this.endDate,
+        };
+    }
+    readInt(offset, size) {
+        switch (size) {
+            case 1:
+                return this.buffer.readInt16LE(offset);
+            case 2:
+                return this.buffer.readInt32LE(offset);
+        }
+    }
+    readPatternTypeSpecific(type) {
+        switch (type) {
+            case PatternType.Day:
+                return null;
+            case PatternType.Week:
+                return readWeekByte(this.buffer.readInt8(OFFSETS.PatternTypeSpecific));
+            case PatternType.Month:
+            case PatternType.MonthEnd:
+                return this.readInt(OFFSETS.PatternTypeSpecific, 2);
+            case PatternType.MonthNth:
+                return {
+                    weekdays: readWeekByte(this.buffer.readInt8(OFFSETS.PatternTypeSpecific)),
+                    nth: this.readInt(OFFSETS.PatternTypeSpecific + 4, 2),
+                };
+        }
+    }
+}
+exports.RecurrencePattern = RecurrencePattern;
+function winToJsDate(dateInt) {
+    return new Date(dateInt * 60 * 1000 - 1.16444736e13); // subtract milliseconds between 1601-01-01 and 1970-01-01
+}
+function readWeekByte(byte) {
+    const weekArr = [];
+    for (let i = 0; i < 7; ++i) {
+        weekArr.push(Boolean(byte & (1 << i)));
+    }
+    return weekArr;
+}
+
+
+/***/ }),
+
+/***/ 2248:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SingleAsyncProvider = void 0;
+class SingleAsyncProvider {
+    constructor() {
+        this._ready = false;
+    }
+    getOrCreate(provider) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._ready) {
+                this._value = yield provider();
+                this._ready = true;
+            }
+            if (this._value === undefined) {
+                throw new Error("provider must provide non-undefined value");
+            }
+            return this._value;
+        });
+    }
+}
+exports.SingleAsyncProvider = SingleAsyncProvider;
+
+
+/***/ }),
+
+/***/ 4723:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getTableContext = void 0;
+const PLMisc_1 = __webpack_require__(9009);
+const bTypeTC = 0x7c;
+function copy(rows) {
+    return rows.map(it => Object.assign({}, it));
+}
+function getTableContext(heap, resolver) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (heap.bClientSig != bTypeTC) {
+            throw new Error("expected type bTypeTC");
+        }
+        const reader = heap.getReader();
+        const headerData = yield reader.getHeapBuffers(heap.userRootHnid);
+        if (headerData.length !== 1) {
+            throw new Error("table context header buffer must be single");
+        }
+        const headerView = new DataView(headerData[0]);
+        const tcSig = headerView.getUint8(0);
+        const numCols = headerView.getUint8(1);
+        const cebOffset = headerView.getUint16(6, true);
+        const numRowBytes = headerView.getUint16(8, true);
+        const hidRowIndex = headerView.getUint32(10, true);
+        const hnidRows = headerView.getUint32(14, true);
+        var tColDesc = headerData[0].slice(22);
+        const schema = Array.from((0, PLMisc_1.splitPer)(tColDesc, 8))
+            .map(it => {
+            const view = new DataView(it);
+            return {
+                type: view.getUint16(0, true),
+                key: view.getUint16(2, true),
+                ibData: view.getUint16(4, true),
+                cbData: view.getUint8(6),
+                iBit: view.getUint8(7),
+            };
+        });
+        if (numCols !== schema.length) {
+            throw new Error("schema length not matched");
+        }
+        if (tcSig !== 0x7c) {
+            throw new Error("tcSig is not 0x7c");
+        }
+        //const min_size = schema.reduce((accum, it) => accum + it.cbData, 0);
+        //const rowIndex = getBTHeapReaderFrom(reader, hidRowIndex);
+        const rows_pages = (hnidRows !== 0)
+            ? yield reader.getHeapBuffers(hnidRows)
+            : [];
+        //const data2 = await reader.getHeapBuffers(offset2);
+        const rows_per_page = (rows_pages.length !== 0)
+            ? Math.floor(rows_pages[0].byteLength / numRowBytes)
+            : 0;
+        function get_record(record_index) {
+            const page_index = (record_index / rows_per_page) | 0;
+            const heap_index = (record_index % rows_per_page) | 0;
+            const buffer = rows_pages[page_index].slice(numRowBytes * (heap_index + 0), numRowBytes * (heap_index + 1));
+            if (buffer.byteLength !== numRowBytes) {
+                throw new Error(`get_record(${record_index}) is reaching EOF while reading record. The heap is ${reader}`);
+            }
+            const ceb = [];
+            {
+                const rgCEB = new Uint8Array(buffer.slice(cebOffset));
+                for (let x = 0; x < numCols; x++) {
+                    ceb.push((rgCEB[(x / 8) | 0] & (1 << (7 - (x % 8)))) != 0);
+                }
+            }
+            return {
+                buffer,
+                ceb,
+            };
+        }
+        const count = rows_pages.reduce((accum, it) => (accum + it.byteLength / numRowBytes) | 0, 0);
+        function listRaw(index) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const record = get_record(index);
+                const list = [];
+                for (let column of schema) {
+                    list.push({
+                        key: column.key,
+                        type: column.type,
+                        value: record.ceb[column.iBit]
+                            ? record.buffer.slice(column.ibData, column.ibData + column.cbData)
+                            : new ArrayBuffer(0),
+                    });
+                }
+                return list;
+            });
+        }
+        function list(record) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const rawProps = yield listRaw(record);
+                const list = [];
+                for (let rawProp of rawProps) {
+                    try {
+                        list.push({
+                            key: rawProp.key,
+                            type: rawProp.type,
+                            value: (rawProp.value.byteLength !== 0)
+                                ? yield resolver.resolveValueOf(rawProp.key, rawProp.type, rawProp.value, reader)
+                                : undefined
+                        });
+                    }
+                    catch (ex) {
+                        throw new Error(`getTableContext.list(rowIndex=${record}) resolving property`
+                            + ` key=0x${rawProp.key.toString(16).padStart(4, '0')}`
+                            + ` type=0x${rawProp.type.toString(16).padStart(4, '0')}`
+                            + ` of ${heap} failure`
+                            + ` --> ${ex}`);
+                    }
+                }
+                return list;
+            });
+        }
+        const rows = [];
+        for (let x = 0; x < count; x++) {
+            rows.push({
+                listRaw() {
+                    return __awaiter(this, void 0, void 0, function* () {
+                        return yield listRaw(x);
+                    });
+                },
+                list() {
+                    return __awaiter(this, void 0, void 0, function* () {
+                        return yield list(x);
+                    });
+                },
+            });
+        }
+        return {
+            rows() {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return copy(rows);
+                });
+            },
+        };
+    });
+}
+exports.getTableContext = getTableContext;
+
+
+/***/ }),
+
+/***/ 5861:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PropertyTypeObject = exports.PSTObject = exports.PSTMessageStore = exports.PSTAppointment = exports.PSTContact = exports.openPst = exports.openPstFile = exports.PSTFolder = exports.PSTMessage = exports.PSTAttachment = exports.PSTRecipient = exports.PSTTask = exports.PSTFile = void 0;
+var PSTFile_class_1 = __webpack_require__(3619);
+Object.defineProperty(exports, "PSTFile", ({ enumerable: true, get: function () { return PSTFile_class_1.PSTFile; } }));
+var PSTTask_class_1 = __webpack_require__(3947);
+Object.defineProperty(exports, "PSTTask", ({ enumerable: true, get: function () { return PSTTask_class_1.PSTTask; } }));
+var PSTRecipient_class_1 = __webpack_require__(1140);
+Object.defineProperty(exports, "PSTRecipient", ({ enumerable: true, get: function () { return PSTRecipient_class_1.PSTRecipient; } }));
+var PSTAttachment_class_1 = __webpack_require__(9983);
+Object.defineProperty(exports, "PSTAttachment", ({ enumerable: true, get: function () { return PSTAttachment_class_1.PSTAttachment; } }));
+var PSTMessage_class_1 = __webpack_require__(1973);
+Object.defineProperty(exports, "PSTMessage", ({ enumerable: true, get: function () { return PSTMessage_class_1.PSTMessage; } }));
+var PSTFolder_class_1 = __webpack_require__(2752);
+Object.defineProperty(exports, "PSTFolder", ({ enumerable: true, get: function () { return PSTFolder_class_1.PSTFolder; } }));
+var openPstFile_1 = __webpack_require__(8927);
+Object.defineProperty(exports, "openPstFile", ({ enumerable: true, get: function () { return openPstFile_1.openPstFile; } }));
+Object.defineProperty(exports, "openPst", ({ enumerable: true, get: function () { return openPstFile_1.openPst; } }));
+var PSTContact_class_1 = __webpack_require__(5920);
+Object.defineProperty(exports, "PSTContact", ({ enumerable: true, get: function () { return PSTContact_class_1.PSTContact; } }));
+var PSTAppointment_class_1 = __webpack_require__(3963);
+Object.defineProperty(exports, "PSTAppointment", ({ enumerable: true, get: function () { return PSTAppointment_class_1.PSTAppointment; } }));
+var PSTMessageStore_class_1 = __webpack_require__(1275);
+Object.defineProperty(exports, "PSTMessageStore", ({ enumerable: true, get: function () { return PSTMessageStore_class_1.PSTMessageStore; } }));
+var PSTObject_class_1 = __webpack_require__(7272);
+Object.defineProperty(exports, "PSTObject", ({ enumerable: true, get: function () { return PSTObject_class_1.PSTObject; } }));
+var PropertyTypeObject_1 = __webpack_require__(1635);
+Object.defineProperty(exports, "PropertyTypeObject", ({ enumerable: true, get: function () { return PropertyTypeObject_1.PropertyTypeObject; } }));
+
+
+/***/ }),
+
+/***/ 5965:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.msftUuidStringify = exports.toHex1 = void 0;
+const hex = "0123456789abcdef";
+/**
+ * byte to lower case hex string
+ *
+ * @internal
+ */
+function toHex1(value) {
+    return hex[(value >> 4) & 15]
+        + hex[(value) & 15];
+}
+exports.toHex1 = toHex1;
+/**
+ * Variant 2 UUIDs, historically used in Microsoft's COM/OLE libraries,
+ * use a mixed-endian format, whereby the first three components of the UUID are little-endian,
+ * and the last two are big-endian.
+ * For example, `00112233-4455-6677-8899-aabbccddeeff` is encoded as the bytes
+ * `33 22 11 00 55 44 77 66 88 99 aa bb cc dd ee ff`.
+ *
+ * @see https://en.wikipedia.org/wiki/Universally_unique_identifier
+ * @internal
+ */
+function msftUuidStringify(array, offset) {
+    return ""
+        + toHex1(array[offset + 3])
+        + toHex1(array[offset + 2])
+        + toHex1(array[offset + 1])
+        + toHex1(array[offset + 0])
+        + "-"
+        + toHex1(array[offset + 5])
+        + toHex1(array[offset + 4])
+        + "-"
+        + toHex1(array[offset + 7])
+        + toHex1(array[offset + 6])
+        + "-"
+        + toHex1(array[offset + 8])
+        + toHex1(array[offset + 9])
+        + "-"
+        + toHex1(array[offset + 10])
+        + toHex1(array[offset + 11])
+        + toHex1(array[offset + 12])
+        + toHex1(array[offset + 13])
+        + toHex1(array[offset + 14])
+        + toHex1(array[offset + 15]);
+}
+exports.msftUuidStringify = msftUuidStringify;
+
+
+/***/ }),
+
+/***/ 8927:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+/* provided dependency */ var Buffer = __webpack_require__(8764)["Buffer"];
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.openPst = exports.openPstFile = void 0;
+const PSTFile_class_1 = __webpack_require__(3619);
+const fs_1 = __importDefault(__webpack_require__(7311));
+const PLUtil_1 = __webpack_require__(5408);
+const PropertyValueResolverV1_1 = __webpack_require__(3805);
+const iconv_lite_1 = __importDefault(__webpack_require__(4914));
+const PAUtil_1 = __webpack_require__(4087);
+/**
+ * Open pst/ost file from os file path.
+ *
+ * @param path os file path.
+ * @param opts options
+ * @returns
+ */
+function openPstFile(path, opts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const file = yield fs_1.default.promises.open(path, "r");
+        function readFile(buffer, offset, length, position) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const view = new Uint8Array(buffer);
+                const { bytesRead } = yield file.read(view, offset, length, position);
+                return bytesRead;
+            });
+        }
+        return yield openPst({
+            readFile,
+            close: () => __awaiter(this, void 0, void 0, function* () {
+                yield file.close();
+            }),
+        }, opts);
+    });
+}
+exports.openPstFile = openPstFile;
+/**
+ * Open pst/ost file using user defined callback.
+ *
+ * @param api reader callback
+ * @param opts options
+ * @returns
+ */
+function openPst(api, opts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const lowPst = yield (0, PLUtil_1.openLowPst)(api);
+        const convertAnsiString = (opts && opts.convertAnsiString)
+            || ((array) => __awaiter(this, void 0, void 0, function* () {
+                return iconv_lite_1.default.decode(Buffer.from(array), (opts && opts.ansiEncoding) || "latin1");
+            }));
+        const resolver = new PropertyValueResolverV1_1.PropertyValueResolverV1(convertAnsiString);
+        const nodeMap = yield (0, PAUtil_1.processNameToIDMap)(yield lowPst.getOneNodeByOrError(97), resolver);
+        return new PSTFile_class_1.PSTFile(lowPst, nodeMap, opts);
+    });
+}
+exports.openPst = openPst;
+
 
 /***/ }),
 
@@ -78212,12 +78218,12 @@ Modal_Modal.defaultProps = Modal_defaultProps;
 // EXTERNAL MODULE: ./node_modules/@hiraokahypertools/pst_to_eml/lib/index.js
 var lib = __webpack_require__(6951);
 // EXTERNAL MODULE: ./node_modules/@hiraokahypertools/pst-extractor/dist/index.js
-var dist = __webpack_require__(7795);
+var dist = __webpack_require__(5861);
 // EXTERNAL MODULE: ./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js
 var injectStylesIntoStyleTag = __webpack_require__(3379);
 var injectStylesIntoStyleTag_default = /*#__PURE__*/__webpack_require__.n(injectStylesIntoStyleTag);
 // EXTERNAL MODULE: ./node_modules/style-loader/dist/runtime/styleDomAPI.js
-var styleDomAPI = __webpack_require__(3380);
+var styleDomAPI = __webpack_require__(7795);
 var styleDomAPI_default = /*#__PURE__*/__webpack_require__.n(styleDomAPI);
 // EXTERNAL MODULE: ./node_modules/style-loader/dist/runtime/insertBySelector.js
 var insertBySelector = __webpack_require__(569);
